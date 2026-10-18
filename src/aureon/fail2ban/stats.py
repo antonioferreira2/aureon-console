@@ -32,12 +32,19 @@ class SecurityStatsService:
 
     # ------------------------------------------------------------------
     def current_banned(self) -> Optional[int]:
+        """Live count, preferring the daemon's own per-jail numbers.
+
+        ``fail2ban-client status <jail>`` reports "Currently banned" per jail and
+        is the authoritative figure; the IP list is used as a fallback. When
+        neither is available the value stays ``None`` and the UI shows
+        "unverified" instead of guessing.
+        """
         if self.status is None:
             return None
+        if any(jail.runtime for jail in self.status.jails):
+            return sum(jail.currently_banned for jail in self.status.jails if jail.runtime)
         if self.status.banned_total:
             return self.status.banned_total
-        if any(jail.runtime for jail in self.status.jails):
-            return sum(jail.currently_banned for jail in self.status.jails)
         if self.status.jails:
             return None  # configured but not verified live
         return None

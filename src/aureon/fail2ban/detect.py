@@ -438,12 +438,8 @@ def detect_status(client: Fail2banClient, ctx=None) -> Fail2banStatus:
 
             ip_result = client.banned_ips(jail.name)
             if ip_result.available:
-                for line in str(ip_result.value or "").splitlines():
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        status.banned_ips.setdefault(jail.name, []).append(
-                            {"ip": parts[0], "when": " ".join(parts[1:])}
-                        )
+                entries = parse_banned_list(str(ip_result.value or ""))
+                status.banned_ips[jail.name] = entries
             elif ip_result.availability != "unavailable":
                 status.warnings.append(f"banned IP list unavailable for jail {jail.name}: {ip_result.error}")
 
@@ -451,6 +447,43 @@ def detect_status(client: Fail2banClient, ctx=None) -> Fail2banStatus:
     status.ssh_jail = _find_ssh_jail(status.jails)
     _validate(status)
     return status
+
+
+_IP_TOKEN_RE = re.compile(r"[0-9a-fA-F:.]{3,45}")
+
+
+def parse_banned_list(output: str) -> List[Dict[str, str]]:
+    """Parse the output of ``fail2ban-client get <jail> banned``.
+
+    Fail2ban has returned this in several shapes:
+
+    * one address per line (``1.2.3.4\n5.6.7.8``)
+    * a Python list literal on a single line (``['1.2.3.4', '5.6.7.8']``)
+    * address plus a relative timestamp (``1.2.3.4   since 3 minutes ago``)
+
+    All three are handled; the address itself is validated, so no text that is
+    not an IP can be mistaken for a banned address.
+    """
+    import ipaddress
+
+    entries: List[Dict[str, str]] = []
+    seen = set()
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        for token in _IP_TOKEN_RE.findall(line):
+            token = token.strip("\'\",")
+            try:
+                ipaddress.ip_address(token)
+            except ValueError:
+                continue
+            if token in seen:
+                continue
+            seen.add(token)
+            remainder = line.split(token, 1)[-1].strip(" '\",")
+            entries.append({"ip": token, "when": remainder[:60]})
+    return entries
 
 
 def _runtime_jail_names(output: str) -> List[str]:

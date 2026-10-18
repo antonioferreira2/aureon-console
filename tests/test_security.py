@@ -160,7 +160,10 @@ def test_ignoreip_never_contains_public_wildcards(tmp_path):
 DOCUMENTATION_PREFIXES = ("203.0.113.", "198.51.100.", "192.0.2.", "127.", "0.0.0.0", "255.")
 PRIVATE_PREFIXES = ("10.", "192.168.", "169.254.")
 # Obvious placeholders used by unit tests and docstrings.
-PLACEHOLDER_ADDRESSES = {"1.1.1.1", "2.2.2.2", "3.3.3.3", "9.9.9.9", "1.2.3.4", "8.8.8.8"}
+PLACEHOLDER_ADDRESSES = {
+    "1.1.1.1", "2.2.2.2", "3.3.3.3", "9.9.9.9", "8.8.8.8",
+    "1.2.3.4", "5.6.7.8", "1.2.3.5",
+}
 
 
 def test_no_public_ip_addresses_are_committed():

@@ -263,3 +263,67 @@ def test_config_file_with_human_durations(tmp_path):
     assert sshd.bantime == 604800
     assert sshd.findtime == 600
     assert sshd.port == "22 2244"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "1.2.3.4\n5.6.7.8\n",
+        "['1.2.3.4', '5.6.7.8', '2001:db8::1']",
+        "1.2.3.4   since 3 minutes ago\n",
+    ],
+)
+def test_banned_list_output_shapes(raw):
+    from aureon.fail2ban.detect import parse_banned_list
+
+    entries = parse_banned_list(raw)
+    assert [entry["ip"] for entry in entries][0] == "1.2.3.4"
+
+
+def test_banned_list_keeps_the_timestamp():
+    from aureon.fail2ban.detect import parse_banned_list
+
+    entries = parse_banned_list("1.2.3.4   since 3 minutes ago")
+    assert entries[0]["when"].startswith("since")
+
+
+def test_banned_list_ignores_non_addresses():
+    from aureon.fail2ban.detect import parse_banned_list
+
+    entries = parse_banned_list("['Status', 'no jail', '1.2.3.4']")
+    assert [entry["ip"] for entry in entries] == ["1.2.3.4"]
+
+
+def test_banned_list_deduplicates():
+    from aureon.fail2ban.detect import parse_banned_list
+
+    assert len(parse_banned_list("1.2.3.4\n1.2.3.4\n")) == 1
+
+
+def test_empty_banned_list():
+    from aureon.fail2ban.detect import parse_banned_list
+
+    assert parse_banned_list("") == []
+
+
+def test_current_banned_prefers_the_daemon_count():
+    from aureon.fail2ban.detect import JailInfo
+    from aureon.fail2ban.stats import SecurityStatsService
+
+    status = Fail2banStatus(
+        installed=True,
+        jails=[JailInfo(name="sshd", enabled=True, runtime=True, currently_banned=488)],
+        banned_ips={"sshd": [{"ip": "1.2.3.4", "when": ""}]},
+        banned_total=1,
+    )
+    service = SecurityStatsService(None, __import__("datetime").timezone.utc, status)
+    assert service.current_banned() == 488
+
+
+def test_current_banned_is_unverified_without_live_data():
+    from aureon.fail2ban.detect import JailInfo
+    from aureon.fail2ban.stats import SecurityStatsService
+    from datetime import timezone
+
+    status = Fail2banStatus(installed=True, jails=[JailInfo(name="sshd", enabled=True, runtime=False)])
+    assert SecurityStatsService(None, timezone.utc, status).current_banned() is None
