@@ -178,11 +178,29 @@ def _split_list(value: str) -> List[str]:
     return [item.strip().strip("'\"") for item in re.split(r"[,\s]+", value) if item.strip()]
 
 
+_DURATION_RE = re.compile(r"^\s*(-?\d+)\s*([smhdw]?)\s*$", re.IGNORECASE)
+_DURATION_UNITS = {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+
+
 def _as_int(value) -> Optional[int]:
-    try:
-        return int(str(value).split("#")[0].strip())
-    except (TypeError, ValueError):
+    """Parse an ini value as a number of seconds.
+
+    Fail2ban accepts plain seconds (``600``) and durations (``10m``, ``1h``,
+    ``7d``); ``-1`` means "permanent". Anything unparsable returns None so the UI
+    says "default" instead of showing a wrong number.
+    """
+    if value is None:
         return None
+    if isinstance(value, list):      # repeated key: keep the last value seen
+        value = value[-1] if value else None
+        if value is None:
+            return None
+    match = _DURATION_RE.match(str(value).split("#")[0])
+    if not match:
+        return None
+    number, unit = match.groups()
+    seconds = int(number) * _DURATION_UNITS[unit.lower()]
+    return None if seconds < 0 else seconds
 
 
 def _as_bool(value) -> Optional[bool]:
@@ -238,10 +256,18 @@ def load_jails(config_dir: Optional[str] = None) -> Tuple[List[JailInfo], List[s
                 merged.setdefault(name, {}).update(values)
                 origins[name] = label
 
+        # Fail2ban inherits every unset key from [DEFAULT]; doing the same here
+        # makes the reported bantime/findtime/maxretry the *effective* values
+        # instead of "unknown".
+        defaults = dict(merged.get("DEFAULT", {}))
+
         jails: List[JailInfo] = []
         for name, values in merged.items():
             if not name or name == "DEFAULT":
                 continue
+            effective = dict(defaults)
+            effective.update(values)
+            values = effective
             enabled = _as_bool(values.get("enabled"))
             if enabled is None:
                 continue  # a jail definition without `enabled` is a template
@@ -428,9 +454,14 @@ def detect_status(client: Fail2banClient, ctx=None) -> Fail2banStatus:
 
 
 def _runtime_jail_names(output: str) -> List[str]:
+    """Extract the loaded jail names from ``fail2ban-client status``.
+
+    The output is a tree, so the line is prefixed (``|`- Jail list:  a, b``);
+    the match must therefore search rather than anchor at the start.
+    """
     names: List[str] = []
     for line in output.splitlines():
-        match = re.match(r"Jail list:\s*(.*)", line)
+        match = re.search(r"Jail list:\s*(.*)", line)
         if match:
             names = [item.strip() for item in match.group(1).split(",") if item.strip()]
     return names

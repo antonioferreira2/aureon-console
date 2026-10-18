@@ -202,3 +202,64 @@ def test_apply_refuses_when_blocked(tmp_path):
 def test_policies_differ():
     values = {name: preset["maxretry"] for name, preset in POLICY_PRESETS.items()}
     assert len(set(values.values())) > 1
+
+
+# --- real fail2ban-client output shapes --------------------------------------
+def test_runtime_jail_names_from_the_real_client_tree():
+    """`fail2ban-client status` prints a tree, so the line carries a `|- ` prefix."""
+    from aureon.fail2ban.detect import _runtime_jail_names
+
+    output = "Status\n|- Number of jail:\t2\n`- Jail list:\trecidiva, sshd\n"
+    assert _runtime_jail_names(output) == ["recidiva", "sshd"]
+
+
+def test_runtime_jail_names_without_prefix():
+    from aureon.fail2ban.detect import _runtime_jail_names
+
+    assert _runtime_jail_names("Jail list:\tsshd\n") == ["sshd"]
+    assert _runtime_jail_names("Status\n|- Number of jail:\t0\n") == []
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("600", 600),
+        ("10m", 600),
+        ("1h", 3600),
+        ("7d", 604800),
+        ("2w", 1209600),
+        ("45s", 45),
+        ("604800", 604800),
+        ("  10m  # comment", 600),
+        ("-1", None),          # permanent: not a number of seconds
+        ("auto", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_duration_parsing(value, expected):
+    from aureon.fail2ban.detect import _as_int
+
+    assert _as_int(value) == expected
+
+
+def test_jail_duration_values_are_parsed_from_config(fail2ban_conf_dir):
+    jails, _, _ = load_jails(str(fail2ban_conf_dir))
+    sshd = {jail.name: jail for jail in jails}["sshd"]
+    assert sshd.bantime == 3600
+    assert sshd.findtime == 600
+    assert sshd.maxretry == 3
+
+
+def test_config_file_with_human_durations(tmp_path):
+    base = tmp_path / "f2b"
+    base.mkdir()
+    (base / "jail.conf").write_text(
+        "[DEFAULT]\nbantime = 604800\nfindtime = 10m\nmaxretry = 3\n\n[sshd]\nenabled = true\nport = 22 2244\n",
+        encoding="utf-8",
+    )
+    jails, _, _ = load_jails(str(base))
+    sshd = jails[0]
+    assert sshd.bantime == 604800
+    assert sshd.findtime == 600
+    assert sshd.port == "22 2244"
