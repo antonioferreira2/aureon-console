@@ -148,9 +148,11 @@ def make_table(columns: Sequence[str], rows: Iterable[Sequence[str]], expand: bo
     return table
 
 
-def empty_state(message: str, hint: str = "") -> Static:
+def empty_state(message: str, hint: str = "") -> Text:
+    """A dim message with an optional hint. Returns a *renderable*, not a widget,
+    so it can be composed inside tables and groups."""
     text = Text(message, style="#6e7681")
     if hint:
         text.append("\n")
         text.append(hint, style="#e5c07b")
-    return Static(text)
+    return text

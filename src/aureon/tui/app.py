@@ -224,7 +224,7 @@ class AureonApp(App):
         try:
             content = self._build_panel(self.current)
         except Exception as exc:  # noqa: BLE001
-            content = panels.empty_state("This panel failed to render.", str(exc))
+            content = panels.widget(panels.empty_state("This panel failed to render.", str(exc)))
         widget = content if isinstance(content, Widget) else panels.widget(content)
         async with self._render_lock:
             _key, label = self._nav_label(self.current)

@@ -23,8 +23,12 @@ from ..util import Availability, Result, bar, human_bytes, human_duration, pct
 from .widgets import HEALTH_STYLE, empty_state, make_table, source_text
 
 
-def panel(result: Result, render, **kwargs) -> Static:
-    """Standard panel wrapper: content + provenance + error state."""
+def panel(result: Result, render, **kwargs):
+    """Standard panel wrapper: content + provenance + error state.
+
+    Returns a rich *renderable* (never a widget) so panels can be composed and
+    unit-tested without an active Textual application.
+    """
     if not result.available:
         message = {
             Availability.UNAVAILABLE: "This module is unavailable on this system.",
@@ -32,17 +36,17 @@ def panel(result: Result, render, **kwargs) -> Static:
             Availability.TIMEOUT: "The underlying command timed out. Data may be incomplete.",
             Availability.ERROR: "The underlying command failed.",
         }.get(result.availability, "Data unavailable.")
-        return widget(empty_state(message, result.error or ""))
+        return empty_state(message, result.error or "")
 
     body = render(result.value, **kwargs)
     parts = [body, source_text(result.availability, result.source, result.error)]
     for warning in result.warnings:
         parts.append(Text(f"! {warning}", style="#e5c07b"))
-    return widget(_table_block(*parts))
+    return _table_block(*parts)
 
 
-def widget(renderable) -> Static:
-    """Wrap a rich renderable in a Textual Static."""
+def widget(renderable):
+    """Wrap a rich renderable in a Textual Static (requires an active app)."""
     static = Static()
     static.update(renderable)
     return static
@@ -52,7 +56,11 @@ def _table_block(*renderables):
     """Compose several rich renderables into one Group."""
     from rich.console import Group
 
-    return Group(*[item for item in renderables if item is not None])
+    from textual.widget import Widget
+
+    return Group(
+        *[item for item in renderables if item is not None and not isinstance(item, Widget)]
+    )
 
 
 # ---------------------------------------------------------------------------

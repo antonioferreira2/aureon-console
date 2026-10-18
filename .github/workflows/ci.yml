@@ -64,6 +64,8 @@ jobs:
           python-version: "3.12"
       - name: first install
         run: ./install.sh
+      - name: installed binary works
+        run: "$HOME/.local/bin/aureon" --version
       - name: second install must refuse
         run: |
           if ./install.sh; then
@@ -71,8 +73,8 @@ jobs:
           fi
       - name: uninstall removes the app but keeps history
         run: |
-          aureon ingest || true
-          mkdir -p "$HOME/.local/share/aureon"
+          "$HOME/.local/bin/aureon" ingest
+          test -e "$HOME/.local/share/aureon/aureon.db"
           ./install.sh --uninstall
           test ! -e "$HOME/.local/share/aureon/venv"
           test -e "$HOME/.local/share/aureon/aureon.db"

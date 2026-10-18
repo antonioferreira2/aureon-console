@@ -31,10 +31,12 @@ async def capture(output: Path) -> None:
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
         await pilot.pause()
+        # The app runs on its own thread: everything must be triggered through
+        # run_worker/pilot so widgets are created on the app thread.
         for panel in PANELS:
             app.current = panel
-            app._states = app._probe_modules()
-            await app._render_current()
+            app.action_refresh()
+            await asyncio.sleep(2.0)
             await pilot.pause()
             target = output / f"{panel}.svg"
             app.save_screenshot(str(target))

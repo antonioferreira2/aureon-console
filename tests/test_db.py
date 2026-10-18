@@ -135,3 +135,44 @@ def test_wal_mode_is_used_for_crash_safety(tmp_path):
     mode = repo.conn.execute("PRAGMA journal_mode").fetchone()[0]
     assert mode.lower() == "wal"
     repo.close()
+
+
+def test_connections_are_thread_local(tmp_path):
+    """A connection created in a worker thread must not be reused in another.
+
+    This mirrors the TUI: collection runs in an executor thread, rendering in
+    the event loop thread. Reusing one connection across threads raises
+    "SQLite objects created in a thread can only be used in that same thread".
+    """
+    import threading
+
+    repo = Repository(tmp_path / "threads.db")
+    errors = []
+
+    def worker():
+        try:
+            repo.insert_events([event(datetime(2026, 3, 5, tzinfo=TZ))])
+            repo.count_events()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    thread.join()
+
+    repo.count_events()
+    assert errors == []
+    assert repo.count_events() == 1
+    repo.close()
+
+
+def test_close_releases_every_connection(tmp_path):
+    import threading
+
+    repo = Repository(tmp_path / "close.db")
+    repo.open()
+    thread = threading.Thread(target=repo.open)
+    thread.start()
+    thread.join()
+    repo.close()
+    assert repo._connections == []

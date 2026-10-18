@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,30 +36,62 @@ def _parse_iso(text: str) -> Optional[datetime]:
 
 
 class Repository:
+    """Thread-safe SQLite repository.
+
+    A connection is created lazily *per thread*: the TUI collects data in a
+    worker thread and renders it in the event loop thread, and a SQLite
+    connection must not cross threads. Every connection is tracked so that
+    :meth:`close` can release all of them.
+    """
+
     def __init__(self, path, read_only: bool = False) -> None:
         self.path = Path(path)
         self.read_only = read_only
-        self.conn: Optional[sqlite3.Connection] = None
+        self._local = threading.local()
+        self._connections: list = []
+        self._lock = threading.Lock()
+
+    @property
+    def conn(self) -> sqlite3.Connection:
+        """Connection bound to the calling thread (created on first use)."""
+        existing = getattr(self._local, "conn", None)
+        if existing is None:
+            existing = self._connect()
+            self._local.conn = existing
+        return existing
+
+    @conn.setter
+    def conn(self, value: Optional[sqlite3.Connection]) -> None:
+        self._local.conn = value
+
+    def _connect(self) -> sqlite3.Connection:
+        if not self.read_only:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        connection = connect(self.path, read_only=self.read_only)
+        if not self.read_only:
+            migrate(connection)
+        with self._lock:
+            self._connections.append(connection)
+        return connection
 
     # -- lifecycle ------------------------------------------------------
     def open(self) -> None:
-        """Open (and migrate) the database. Raises sqlite3.DatabaseError when
-        the file is not a usable SQLite database - callers that must degrade
-        gracefully use :meth:`try_open`."""
-        if self.conn is not None:
-            return
-        if not self.read_only:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = connect(self.path, read_only=self.read_only)
-        if not self.read_only:
-            migrate(self.conn)
+        """Open (and migrate) the database for the calling thread.
+
+        Raises sqlite3.DatabaseError when the file is not a usable SQLite
+        database; callers that must degrade gracefully use :meth:`try_open`.
+        """
+        _ = self.conn  # opening the connection is the side effect
 
     def close(self) -> None:
-        if self.conn is not None:
+        with self._lock:
+            connections, self._connections = self._connections, []
+        for connection in connections:
             try:
-                self.conn.close()
-            finally:
-                self.conn = None
+                connection.close()
+            except sqlite3.Error:  # pragma: no cover - best effort
+                pass
+        self._local.conn = None
 
     def __enter__(self) -> "Repository":
         self.open()
@@ -78,7 +111,7 @@ class Repository:
     def available(self) -> Result:
         try:
             self.open()
-            with self.conn:  # type: ignore[union-attr]
+            with self.conn:
                 self.conn.execute("SELECT 1 FROM meta LIMIT 1").fetchall()
             return Result.ok_result(True, str(self.path))
         except sqlite3.Error as exc:
@@ -87,9 +120,7 @@ class Repository:
     # -- writes ---------------------------------------------------------
     def insert_events(self, events: Sequence[SecurityEvent], host_id: str = "") -> Tuple[int, int]:
         """Insert events idempotently. Returns ``(inserted, duplicates)``."""
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
+        conn = self.conn
         inserted = 0
         duplicates = 0
         now = datetime.now(timezone.utc).isoformat()
@@ -97,7 +128,7 @@ class Repository:
         for event in events:
             epoch = int(event.occurred_at.timestamp())
             dedup = event.dedup_key
-            exists = self.conn.execute(
+            exists = conn.execute(
                 "SELECT 1 FROM security_events WHERE dedup_key = ?", (dedup,)
             ).fetchone()
             if exists:
@@ -122,7 +153,7 @@ class Repository:
             )
         if not rows:
             return 0, duplicates
-        cur = self.conn.executemany(
+        cur = conn.executemany(
             """
             INSERT OR IGNORE INTO security_events
                 (occurred_at, occurred_ts, kind, jail, ip, username, source, source_id,
@@ -145,10 +176,8 @@ class Repository:
         state: str,
         note: str = "",
     ) -> None:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        self.conn.execute(
+        conn = self.conn
+        conn.execute(
             """
             INSERT INTO collection_runs
                 (started_at, finished_at, source, events_seen, events_added, duplicates, state, note)
@@ -158,37 +187,29 @@ class Repository:
         )
 
     def last_run(self) -> Optional[Dict[str, str]]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        row = self.conn.execute(
+        conn = self.conn
+        row = conn.execute(
             "SELECT * FROM collection_runs ORDER BY id DESC LIMIT 1"
         ).fetchone()
         return dict(row) if row else None
 
     def runs(self, limit: int = 20) -> List[Dict[str, str]]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        rows = self.conn.execute(
+        conn = self.conn
+        rows = conn.execute(
             "SELECT * FROM collection_runs ORDER BY id DESC LIMIT ?", (int(limit),)
         ).fetchall()
         return [dict(row) for row in rows]
 
     # -- ingest cursors -------------------------------------------------
     def get_cursor(self, source_key: str) -> Optional[Dict]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        row = self.conn.execute(
+        conn = self.conn
+        row = conn.execute(
             "SELECT * FROM ingest_sources WHERE source_key = ?", (source_key,)
         ).fetchone()
         return dict(row) if row else None
 
     def set_cursor(self, source_key: str, values: Dict[str, object]) -> None:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
+        conn = self.conn
         columns = {
             "path": str(values.get("path", "")),
             "inode": values.get("inode"),
@@ -201,7 +222,7 @@ class Repository:
             "state": str(values.get("state", "ok")),
             "note": str(values.get("note", "")),
         }
-        self.conn.execute(
+        conn.execute(
             """
             INSERT INTO ingest_sources
                 (source_key, path, inode, device, size, offset, line, last_event_ts, last_scan, state, note)
@@ -216,17 +237,13 @@ class Repository:
         )
 
     def all_cursors(self) -> List[Dict]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        return [dict(row) for row in self.conn.execute("SELECT * FROM ingest_sources").fetchall()]
+        conn = self.conn
+        return [dict(row) for row in conn.execute("SELECT * FROM ingest_sources").fetchall()]
 
     # -- reads ----------------------------------------------------------
     def coverage(self) -> Tuple[Optional[datetime], Optional[datetime], int]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        row = self.conn.execute(
+        conn = self.conn
+        row = conn.execute(
             "SELECT MIN(occurred_ts) AS lo, MAX(occurred_ts) AS hi, COUNT(*) AS n FROM security_events"
         ).fetchone()
         if not row or not row["n"]:
@@ -236,15 +253,13 @@ class Repository:
         return lo, hi, int(row["n"])
 
     def count_events(self, kind: Optional[str] = None) -> int:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
+        conn = self.conn
         if kind:
-            row = self.conn.execute(
+            row = conn.execute(
                 "SELECT COUNT(*) AS n FROM security_events WHERE kind = ?", (kind,)
             ).fetchone()
         else:
-            row = self.conn.execute("SELECT COUNT(*) AS n FROM security_events").fetchone()
+            row = conn.execute("SELECT COUNT(*) AS n FROM security_events").fetchone()
         return int(row["n"]) if row else 0
 
     def stats_for_period(
@@ -257,9 +272,7 @@ class Repository:
         current_banned: Optional[int] = None,
         recurrent_threshold: int = 2,
     ) -> PeriodStats:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
+        conn = self.conn
         lo, hi = int(start.timestamp()), int(end.timestamp())
         stats = PeriodStats(
             period=period_name,
@@ -269,7 +282,7 @@ class Repository:
             currently_banned=current_banned,
         )
 
-        row = self.conn.execute(
+        row = conn.execute(
             """
             SELECT
               SUM(CASE WHEN kind='ban' THEN 1 ELSE 0 END) AS ban_events,
@@ -290,7 +303,7 @@ class Repository:
         if row["last_event"]:
             stats.last_event_at = datetime.fromtimestamp(int(row["last_event"]), tz=timezone.utc).astimezone(tzinfo)
 
-        rows = self.conn.execute(
+        rows = conn.execute(
             """
             SELECT ip, COUNT(*) AS events,
                    SUM(CASE WHEN kind='ban' THEN 1 ELSE 0 END) AS bans
@@ -311,7 +324,7 @@ class Repository:
         ]
         stats.recurrent_ips = sum(1 for item in stats.top_ips if item["recurrent"])
 
-        jail_rows = self.conn.execute(
+        jail_rows = conn.execute(
             """
             SELECT jail, SUM(CASE WHEN kind='ban' THEN 1 ELSE 0 END) AS bans
             FROM security_events WHERE occurred_ts >= ? AND occurred_ts < ? AND jail <> ''
@@ -335,10 +348,8 @@ class Repository:
         return stats
 
     def banned_ips_in_period(self, start: datetime, end: datetime, limit: int = 500) -> List[Dict]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        rows = self.conn.execute(
+        conn = self.conn
+        rows = conn.execute(
             """
             SELECT ip, jail, MAX(occurred_ts) AS last_ts, COUNT(*) AS events
             FROM security_events
@@ -358,10 +369,8 @@ class Repository:
         ]
 
     def events_for_ip(self, ip: str, limit: int = 100) -> List[Dict]:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        rows = self.conn.execute(
+        conn = self.conn
+        rows = conn.execute(
             "SELECT * FROM security_events WHERE ip = ? ORDER BY occurred_ts DESC LIMIT ?",
             (ip, int(limit)),
         ).fetchall()
@@ -373,15 +382,13 @@ class Repository:
         return out
 
     def purge_older_than(self, cutoff: datetime) -> int:
-        if not self.conn:
-            self.open()
-        assert self.conn is not None
-        cur = self.conn.execute("DELETE FROM security_events WHERE occurred_ts < ?", (int(cutoff.timestamp()),))
+        conn = self.conn
+        cur = conn.execute("DELETE FROM security_events WHERE occurred_ts < ?", (int(cutoff.timestamp()),))
         return cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
 
     def vacuum(self) -> None:
         if self.conn and not self.read_only:
-            self.conn.execute("VACUUM")
+            conn.execute("VACUUM")
 
     def db_size(self) -> int:
         try:
@@ -392,7 +399,6 @@ class Repository:
     def backup(self, destination: Path) -> Path:
         """Consistent online backup using SQLite's backup API."""
         self.open()
-        assert self.conn is not None
         destination.parent.mkdir(parents=True, exist_ok=True)
         target = connect(destination)
         try:
@@ -410,7 +416,6 @@ class Repository:
         error = self.try_open()
         if error is not None:
             return Result(str(error), str(self.path), "error", f"corrupt or unreadable database: {error}")
-        assert self.conn is not None
         try:
             rows = self.conn.execute("PRAGMA integrity_check").fetchall()
         except sqlite3.DatabaseError as exc:

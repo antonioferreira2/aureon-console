@@ -34,7 +34,7 @@ async def test_every_navigation_panel_renders(config):
             app.current = key
             app.run_worker(app._collect_and_render(), exclusive=True)
             await pilot.pause()
-            assert app.query_one("#aureon-content"), f"panel {key} produced no content"
+            assert app.query_one("#aureon-body").children, f"panel {key} produced no content"
 
 
 @pytest.mark.tui
@@ -84,3 +84,56 @@ async def test_dashboard_survives_fail2ban_absence(config):
         await pilot.pause()
         status = app.security.status
         assert status.installed in (True, False)
+
+
+# --- renderer regression tests -------------------------------------------------
+# CI (not the developer's machine) caught widgets being composed into rich
+# renderables. These tests render every panel with *degraded* data so that the
+# empty-state paths are exercised too.
+def test_empty_state_returns_a_renderable_not_a_widget():
+    from rich.text import Text
+
+    from aureon.tui.widgets import empty_state
+
+    assert isinstance(empty_state("nothing here", "install the tool"), Text)
+
+
+def test_panel_renders_when_the_source_is_unavailable():
+    from aureon.tui import panels
+    from aureon.util import Availability, Result
+
+    result = Result(None, "smartctl", Availability.UNAVAILABLE, "not installed")
+    assert panels.panel(result, lambda _v: panels.empty_state("unused")) is not None
+    denied = Result(None, "fail2ban-client", Availability.DENIED, "root required")
+    assert panels.panel(denied, lambda _v: panels.empty_state("unused")) is not None
+    errored = Result(None, "journalctl", Availability.ERROR, "boom")
+    assert panels.panel(errored, lambda _v: panels.empty_state("unused")) is not None
+
+
+def test_every_panel_renderer_survives_empty_input():
+    from aureon.collectors.docker import DockerInfo
+    from aureon.collectors.logs import LogsInfo
+    from aureon.collectors.network import NetworkInfo
+    from aureon.collectors.sensors import SensorInfo
+    from aureon.collectors.services import ServicesInfo
+    from aureon.collectors.storage import StorageInfo
+    from aureon.fail2ban.detect import Fail2banStatus
+    from aureon.tui import panels
+
+    from datetime import datetime, timezone
+
+    assert panels.render_storage(StorageInfo()) is not None
+    assert panels.render_network(NetworkInfo()) is not None
+    assert panels.render_services(ServicesInfo()) is not None
+    assert panels.render_logs(LogsInfo()) is not None
+    assert panels.render_docker(DockerInfo()) is not None
+    assert panels.render_docker(DockerInfo(permissions_ok=False)) is not None
+    assert panels.render_sensors(SensorInfo()) is not None
+    assert panels.render_tools([]) is not None
+    assert panels.render_fail2ban_status(Fail2banStatus(installed=False)) is not None
+    assert panels.render_banned_ips([], {}, True) is not None
+    from aureon.models import PeriodStats
+
+    now = datetime.now(timezone.utc)
+    stats = PeriodStats("today", now, now, "UTC", data_available=False)
+    assert panels.render_security_periods({"today": stats}, "no data") is not None
