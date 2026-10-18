@@ -33,18 +33,24 @@ def _data_home() -> Path:
     return Path(base) / "aureon"
 
 
-def _default_state_dir() -> Path:
+def _default_state_dir(is_root: Optional[bool] = None, system_dir: Optional[str] = None) -> Path:
     """Writable state directory.
 
-    A system-wide location is preferred when the process may write there, so a
-    root-run session can read history collected by a service-less run; the user
-    directory is used otherwise. No directory is created at import time.
+    Root sessions use ``/var/lib/aureon`` (the system-wide install), everyone
+    else gets their own XDG data directory. A non-root user must never be
+    dropped into a world-readable system path, so the root check is explicit
+    instead of relying on a writability test.
     """
     override = os.environ.get("AUREON_STATE_DIR")
     if override:
         return Path(override)
-    system = Path("/var/lib/aureon")
-    if system.is_dir() and os.access(system, os.W_OK):
+    system = Path(system_dir or "/var/lib/aureon")
+    if is_root is None:
+        try:
+            is_root = os.geteuid() == 0
+        except AttributeError:  # pragma: no cover - non-POSIX
+            is_root = False
+    if is_root and system.is_dir() and os.access(system, os.W_OK):
         return system
     return _data_home()
 

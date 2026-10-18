@@ -154,3 +154,38 @@ def test_ignoreip_never_contains_public_wildcards(tmp_path):
     plan = build_plan(status)
     for entry in plan.ignoreip:
         assert entry not in ("0.0.0.0/0", "::/0"), "excluding the whole internet from bans is unsafe"
+
+
+# --- repository hygiene ------------------------------------------------------
+DOCUMENTATION_PREFIXES = ("203.0.113.", "198.51.100.", "192.0.2.", "127.", "0.0.0.0", "255.")
+PRIVATE_PREFIXES = ("10.", "192.168.", "169.254.")
+# Obvious placeholders used by unit tests and docstrings.
+PLACEHOLDER_ADDRESSES = {"1.1.1.1", "2.2.2.2", "3.3.3.3", "9.9.9.9", "1.2.3.4", "8.8.8.8"}
+
+
+def test_no_public_ip_addresses_are_committed():
+    """No real client/server address may live in the repository.
+
+    Addresses from the RFC 5737 documentation ranges and RFC 1918 private
+    ranges are fine (they are examples or fixtures); anything else would mean
+    real data from a real machine.
+    """
+    import re
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    files = subprocess.run(
+        ["git", "ls-files"], cwd=root, capture_output=True, text=True, check=False
+    ).stdout.split()
+    offenders = []
+    for name in files:
+        if not name.endswith((".py", ".sh", ".toml", ".yml", ".cfg")):
+            continue
+        text = (root / name).read_text(encoding="utf-8", errors="replace")
+        for address in re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text):
+            if address.startswith(DOCUMENTATION_PREFIXES + PRIVATE_PREFIXES):
+                continue
+            if address.startswith("172.") or address in PLACEHOLDER_ADDRESSES:
+                continue
+            offenders.append(f"{name}: {address}")
+    assert offenders == [], f"possible real addresses committed: {offenders}"

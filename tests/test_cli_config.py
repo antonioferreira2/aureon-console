@@ -61,6 +61,34 @@ def test_ensure_dirs_creates_private_directories(tmp_path):
     assert (Path(cfg.state_dir).stat().st_mode & 0o077) == 0
 
 
+def test_non_root_uses_the_user_directory(monkeypatch, tmp_path):
+    """A normal user must never be pointed at a system-wide path."""
+    from aureon.config import _default_state_dir
+
+    monkeypatch.delenv("AUREON_STATE_DIR", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    system = tmp_path / "var-lib-aureon"
+    system.mkdir()
+    assert _default_state_dir(is_root=False, system_dir=str(system)) == tmp_path / "aureon"
+
+
+def test_root_prefers_the_system_directory_when_present(monkeypatch, tmp_path):
+    from aureon.config import _default_state_dir
+
+    monkeypatch.delenv("AUREON_STATE_DIR", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    system = tmp_path / "var-lib-aureon"
+    system.mkdir()
+    assert _default_state_dir(is_root=True, system_dir=str(system)) == system
+
+
+def test_explicit_override_wins(monkeypatch, tmp_path):
+    from aureon.config import _default_state_dir
+
+    monkeypatch.setenv("AUREON_STATE_DIR", str(tmp_path / "custom"))
+    assert _default_state_dir() == tmp_path / "custom"
+
+
 def test_missing_config_file_is_not_an_error(tmp_path):
     assert load_config(tmp_path / "does-not-exist.toml").refresh_seconds > 0
 
