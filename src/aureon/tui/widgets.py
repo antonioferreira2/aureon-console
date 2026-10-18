@@ -135,17 +135,28 @@ class StatTable(Static):
         table.add_column("Metric", style="bold", no_wrap=True)
         table.add_column("Value")
         for row in rows:
-            table.add_row(*[str(cell) for cell in row])
+            table.add_row(*[_cell(cell) for cell in row])
         self.update(table)
 
 
 def make_table(columns: Sequence[str], rows: Iterable[Sequence[str]], expand: bool = True) -> Table:
+    """Build a table whose cells can never be interpreted as Rich markup.
+
+    Unit names such as ``/sys/fs/cgroup/azure.slice/walinuxagent.service`` and
+    raw log lines contain square brackets, which Rich would treat as markup and
+    raise ``MarkupError`` on. Wrapping every cell in ``Text`` disables markup
+    parsing while keeping colours from ``Text`` cells intact.
+    """
     table = Table(box=None, expand=expand, pad_edge=False, padding=(0, 2, 0, 0))
     for column in columns:
         table.add_column(column, no_wrap=False)
     for row in rows:
-        table.add_row(*[str(cell) for cell in row])
+        table.add_row(*[_cell(cell) for cell in row])
     return table
+
+
+def _cell(value) -> Text:
+    return value if isinstance(value, Text) else Text(str(value))
 
 
 def empty_state(message: str, hint: str = "") -> Text:

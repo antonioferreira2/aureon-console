@@ -51,7 +51,10 @@ if [ "$UNINSTALL" = "1" ]; then
         rm -rf "$VENV_DIR"
         echo "    removed $VENV_DIR"
     fi
-    rm -rf "$PREFIX/share/aureon" 2>/dev/null || true
+    # Only the venv tree is removed. "$PREFIX/share/aureon" may also hold the
+    # history database (that is the default state directory for a per-user
+    # install), so it must never be deleted as a whole.
+    rmdir "$PREFIX/share/aureon" 2>/dev/null || true
     if [ "$PURGE" = "1" ]; then
         if [ "$STATE_DIR" = "/" ] || [ -z "$STATE_DIR" ]; then
             echo "refusing to purge '$STATE_DIR'" >&2; exit 1

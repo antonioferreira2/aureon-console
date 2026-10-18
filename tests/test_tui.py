@@ -137,3 +137,30 @@ def test_every_panel_renderer_survives_empty_input():
     now = datetime.now(timezone.utc)
     stats = PeriodStats("today", now, now, "UTC", data_available=False)
     assert panels.render_security_periods({"today": stats}, "no data") is not None
+
+
+def test_cells_containing_square_brackets_are_not_parsed_as_markup():
+    """systemd cgroup paths look like Rich markup and used to crash the UI."""
+    from aureon.collectors.services import ServiceInfo, ServicesInfo
+    from aureon.tui import panels
+
+    info = ServicesInfo(
+        backend="systemd",
+        services=[
+            ServiceInfo(
+                unit="/sys/fs/cgroup/azure.slice/walinuxagent.service",
+                active_state="active",
+                sub_state="running",
+                description="[not-a-markup-tag] agent",
+            )
+        ],
+    )
+    assert panels.render_services(info) is not None
+
+
+def test_log_lines_with_brackets_do_not_crash():
+    from aureon.collectors.logs import LogLine, LogsInfo
+    from aureon.tui import panels
+
+    info = LogsInfo(backend="journald", lines=[LogLine(None, unit="sshd", message="[/a/b] closed")])
+    assert panels.render_logs(info) is not None
