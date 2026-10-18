@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import difflib
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -175,6 +176,19 @@ def detect_log_backend(status: Optional[Fail2banStatus]) -> str:
 # ---------------------------------------------------------------------------
 # rendering
 # ---------------------------------------------------------------------------
+UNRESOLVED_RE = re.compile(r"^\s*%\(.+\)s\s*$")
+
+
+def is_unresolved(value: str) -> bool:
+    """True for a fail2ban template value such as ``%(sshd_log)s``.
+
+    Those placeholders are interpolated by the daemon at runtime. Copying them
+    into a hand-written drop-in would either be ignored or break the jail, so
+    the wizard never emits them.
+    """
+    return bool(value) and any(UNRESOLVED_RE.match(part) for part in str(value).split())
+
+
 def render_dropin(
     jail: str,
     backend: str,
@@ -183,14 +197,25 @@ def render_dropin(
     values: Dict[str, object],
     ignoreip: List[str],
 ) -> str:
+    """Render the drop-in file.
+
+    Optional keys are omitted when they are empty or still contain a runtime
+    placeholder: the resulting file then inherits the value from
+    jail.conf/[DEFAULT], which is always safer than guessing.
+    """
     lines = [
         "# Managed by AUREON Console (António Lourenço Ferreira)",
         "# Created with the assisted configuration wizard. Remove this file to revert.",
         f"[{jail}]",
         "enabled  = true",
-        f"backend  = {backend}",
-        f"port     = {port}",
-        f"logpath  = {logpath}",
+    ]
+    if backend and not is_unresolved(backend):
+        lines.append(f"backend  = {backend}")
+    if port and not is_unresolved(port):
+        lines.append(f"port     = {port}")
+    if logpath and not is_unresolved(logpath):
+        lines.append(f"logpath  = {logpath}")
+    lines += [
         f"maxretry = {values['maxretry']}",
         f"findtime = {values['findtime']}",
         f"bantime  = {values['bantime']}",
@@ -217,6 +242,15 @@ def build_plan(
     jail_name = status.ssh_jail.name if status.ssh_jail else "sshd"
     log_backend = backend or detect_log_backend(status)
     logpath = _resolve_logpath(status, jail_name)
+
+    # Keep whatever the running jail already uses when AUREON cannot determine
+    # it: replacing a multi-port value with a guessed single port would silently
+    # stop protecting the other port.
+    if status.ssh_jail:
+        if not ssh_port and status.ssh_jail.port and not is_unresolved(status.ssh_jail.port):
+            port = status.ssh_jail.port
+        if not backend and status.ssh_jail.backend and not is_unresolved(status.ssh_jail.backend):
+            log_backend = status.ssh_jail.backend
 
     ignore = list(ignoreip or [])
     if status.ssh_jail and status.ssh_jail.ignoreip and not ignore:
@@ -249,6 +283,15 @@ def build_plan(
         warnings.append(f"Detected admin address {admin_ip} ({admin_source}). It is NOT added automatically.")
     if _is_network_like(ignore):
         warnings.append("ignoreip contains broad entries; every excluded address is never blocked by this jail.")
+    if is_unresolved(logpath):
+        warnings.append(
+            "the jail log path is defined by a fail2ban placeholder and cannot be resolved statically; "
+            "the proposal leaves logpath out so the existing value is inherited"
+        )
+    if status.ssh_jail and status.ssh_jail.port and " " in status.ssh_jail.port and not ssh_port:
+        warnings.append(f"the jail listens on several ports ({status.ssh_jail.port}); they are preserved as-is")
+    if not status.ssh_jail and port == "22":
+        warnings.append("no SSH jail exists yet: confirm the SSH port before applying (the proposal assumes 22)")
     if policy not in POLICY_PRESETS:
         warnings.append(f"unknown policy {policy!r}; falling back to 'balanced'")
     if not status.installed:

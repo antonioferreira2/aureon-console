@@ -327,3 +327,39 @@ def test_current_banned_is_unverified_without_live_data():
 
     status = Fail2banStatus(installed=True, jails=[JailInfo(name="sshd", enabled=True, runtime=False)])
     assert SecurityStatsService(None, timezone.utc, status).current_banned() is None
+
+
+# --- wizard: runtime placeholders and multi-port jails ----------------------
+def test_unresolved_placeholders_are_detected():
+    from aureon.fail2ban.wizard import is_unresolved
+
+    assert is_unresolved("%(sshd_log)s")
+    assert is_unresolved("%(sshd_backend)s")
+    assert not is_unresolved("/var/log/auth.log")
+    assert not is_unresolved("")
+
+
+def test_dropin_never_contains_a_placeholder():
+    from aureon.fail2ban.wizard import POLICY_PRESETS, render_dropin
+
+    content = render_dropin("sshd", "%(sshd_backend)s", "22", "%(sshd_log)s", POLICY_PRESETS["balanced"], [])
+    assert "%(" not in content
+    assert "backend" not in content
+    assert "logpath" not in content
+    assert "port     = 22" in content
+
+
+def test_plan_keeps_a_multi_port_jail(monkeypatch, tmp_path):
+    from aureon.fail2ban.wizard import build_plan
+
+    monkeypatch.delenv("SSH_CLIENT", raising=False)
+    status = Fail2banStatus(
+        installed=True,
+        config_dir=str(tmp_path),
+        jails=[JailInfo(name="sshd", enabled=True, port="22 2244", logpath=["%(sshd_log)s"], backend="%(sshd_backend)s")],
+    )
+    plan = build_plan(status)
+    assert "port     = 22 2244" in plan.content
+    assert "%(sshd_log)s" not in plan.content
+    assert any("several ports" in warning for warning in plan.warnings)
+    assert any("placeholder" in warning for warning in plan.warnings)
