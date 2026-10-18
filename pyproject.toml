@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aureon-console"
+version = "0.1.0"
+description = "AUREON Console - read-only TUI for Linux server monitoring, diagnostics, logs and Fail2ban security insights."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "António Lourenço Ferreira" }]
+keywords = ["linux", "tui", "monitoring", "fail2ban", "security", "server"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console :: Curses",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Monitoring",
+]
+dependencies = [
+  "textual>=0.60",
+  "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+
+[project.scripts]
+aureon = "aureon.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/aureon-console/aureon-console"
+Documentation = "https://github.com/aureon-console/aureon-console/tree/main/docs"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+markers = [
+  "tui: tests that drive the Textual application",
+  "slow: slower integration tests",
+]

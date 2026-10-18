@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  headless-smoke:
+    name: headless smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - name: doctor
+        run: aureon doctor
+      - name: modules
+        run: aureon modules --json
+      - name: stats without data
+        run: aureon stats --period today --json
+      - name: f2b plan is read-only
+        run: aureon f2b plan
+      - name: no file was written to /etc/fail2ban
+        run: test ! -e /etc/fail2ban/jail.d/aureon-sshd.local
+
+  installer:
+    name: installer (repeated run must be idempotent)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: first install
+        run: ./install.sh
+      - name: second install must refuse
+        run: |
+          if ./install.sh; then
+            echo "installer was not idempotent"; exit 1
+          fi
+      - name: uninstall removes the app but keeps history
+        run: |
+          aureon ingest || true
+          mkdir -p "$HOME/.local/share/aureon"
+          ./install.sh --uninstall
+          test ! -e "$HOME/.local/share/aureon/venv"
+          test -e "$HOME/.local/share/aureon/aureon.db"
