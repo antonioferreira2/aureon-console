@@ -65,7 +65,7 @@ jobs:
       - name: first install
         run: ./install.sh
       - name: installed binary works
-        run: "$HOME/.local/bin/aureon" --version
+        run: $HOME/.local/bin/aureon --version
       - name: second install must refuse
         run: |
           if ./install.sh; then
