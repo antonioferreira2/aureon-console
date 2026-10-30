@@ -26,4 +26,4 @@ La migración al esquema versión 2 añade la tabla `assessments` y conserva el 
 
 ## Idiomas
 
-La navegación y las etiquetas de evaluación admiten inglés (`en`), portugués (`pt`), español (`es`), francés (`fr`), alemán (`de`), italiano (`it`) y neerlandés (`nl`). Configure `language` en `config.toml` o `AUREON_LANGUAGE`. Los valores no admitidos usan inglés. Las evidencias y el texto del servidor conservan su idioma original para mantener la procedencia.
+La interfaz admite inglés (`en`), portugués europeo (`pt_PT`; `pt` se acepta como alias), español (`es`), francés (`fr`), italiano (`it`), chino simplificado (`zh_CN`) y ruso (`ru`). Configure `language` en `config.toml` o `AUREON_LANGUAGE`. Los valores no admitidos usan inglés. Las evidencias y el texto del servidor conservan su idioma original para mantener la procedencia.

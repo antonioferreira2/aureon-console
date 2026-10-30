@@ -63,7 +63,7 @@ Uninstall (the history database is **kept** unless you ask for it):
 ./install.sh --uninstall --purge-data    # deletes AUREON data after confirmation
 ```
 
-Details: [`docs/INSTALLATION.md`](docs/INSTALLATION.md). Language: set `language = "pt"` or `AUREON_LANGUAGE=pt` for Portuguese; supported values are `en`, `pt`, `es`, `fr`, `de`, `it`, `nl`.
+Details: [`docs/INSTALLATION.md`](docs/INSTALLATION.md). Language: set `language = "pt_PT"` or `AUREON_LANGUAGE=pt_PT` for European Portuguese (`pt` is accepted as an alias). Supported values are `en`, `pt_PT`, `es`, `fr`, `it`, `zh_CN` and `ru`.
 
 Hardening checks, limitations and assessment history: [`docs/HARDENING.md`](docs/HARDENING.md), with six translated editions linked there.
 
@@ -158,9 +158,9 @@ methodology: [`docs/DATA-ACCURACY.md`](docs/DATA-ACCURACY.md).
 | [HARDENING.pt.md](docs/HARDENING.pt.md) | Avaliação de hardening (português) |
 | [HARDENING.es.md](docs/HARDENING.es.md) | Evaluación de hardening (español) |
 | [HARDENING.fr.md](docs/HARDENING.fr.md) | Évaluation du durcissement (français) |
-| [HARDENING.de.md](docs/HARDENING.de.md) | Hardening-Bewertung (Deutsch) |
 | [HARDENING.it.md](docs/HARDENING.it.md) | Valutazione hardening (italiano) |
-| [HARDENING.nl.md](docs/HARDENING.nl.md) | Hardeningbeoordeling (Nederlands) |
+| [HARDENING.zh_CN.md](docs/HARDENING.zh_CN.md) | 加固评估（简体中文） |
+| [HARDENING.ru.md](docs/HARDENING.ru.md) | Оценка защищённости (русский) |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common failures and fixes |
 | [VIDEO-REFERENCE.md](docs/VIDEO-REFERENCE.md) | Analysis of the reference video (not accessible) |
 | [RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md) | What must be true before a release |

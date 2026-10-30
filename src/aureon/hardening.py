@@ -108,7 +108,7 @@ CHECKS = (
         id="FIREWALL-INBOUND-POLICY",
         domain="Firewall",
         title="Firewall inbound posture",
-        description="Conservatively evaluate active UFW defaults, paired IPv4/IPv6 iptables INPUT policies, and a narrow nftables input subset; flag an unconditional nft accept or a universal-source allow for common administrative ports only when a complete single-chain inet ruleset is visible. Do not infer external reachability or interpret arbitrary allow rules as safe.",
+        description="Conservatively evaluate active UFW defaults, paired IPv4/IPv6 iptables INPUT policies, and a narrow nftables input subset; preserve firewalld zone evidence without treating a running daemon or an allow-list as proof of restrictive exposure. Do not infer external reachability or interpret arbitrary allow rules as safe.",
         data_sources=("ufw status verbose", "nft list ruleset", "iptables -S", "iptables-save", "firewalld runtime zones"),
 
         expected_state="explicit restrictive inbound policy is evidenced",
@@ -116,7 +116,7 @@ CHECKS = (
         weight=5,
         remediation="Review the active ruleset and external network controls with the system owner before proposing a targeted change.",
         verification="Compare runtime firewall policy, listening services, IPv4/IPv6 coverage, and upstream controls.",
-        limitations="Parses a single-table/single-input-chain nftables subset, including a narrowly matched universal-source ACCEPT for common administrative ports only as its first rule, or complete IPv4/IPv6 iptables filter rulesets with no rules; detects an unconditional iptables INPUT ACCEPT in the first INPUT rule position. Other explicit rules, additional chains/tables, chain flow, ordering, forwarding, namespaces, routing, other firewall managers, upstream controls and external reachability remain UNKNOWN or require separate review.",
+        limitations="Parses a single-table/single-input-chain nftables subset, including a narrowly matched universal-source ACCEPT for common administrative ports only as its first rule, or complete IPv4/IPv6 iptables filter rulesets with no rules; detects an unconditional iptables INPUT ACCEPT in the first INPUT rule position. UFW explicit rules and firewalld zone/rich-rule semantics remain UNKNOWN; runtime state alone is not a policy verdict. Other rules, additional chains/tables, chain flow, ordering, forwarding, namespaces, routing, other firewall managers, upstream controls and external reachability remain UNKNOWN or require separate review."
     ),
     CheckDefinition("SSH-PASSWORD-AUTH", "SSH", "SSH password authentication", "Inspect effective password authentication policy.", ("sshd -T",), "password authentication disabled or separately justified", "high", 4, "Review account recovery, keys and MFA before changing authentication policy.", "Re-run sshd -T and verify passwordauthentication.", "Does not evaluate Match blocks or account-level controls."),
     CheckDefinition("SSH-MAX-AUTH-TRIES", "SSH", "SSH authentication attempt limit", "Inspect effective MaxAuthTries.", ("sshd -T",), "at most 6 attempts", "medium", 2, "Review MaxAuthTries against operational access needs.", "Re-run sshd -T and verify maxauthtries.", "Threshold is a conservative heuristic, not a universal policy."),

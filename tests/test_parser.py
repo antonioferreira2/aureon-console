@@ -58,6 +58,22 @@ def test_journal_events_use_journald_timestamp():
     assert events[0].occurred_at.astimezone(TZ).hour == 9
 
 
+def test_iso_parser_accepts_compact_offsets_and_fractions_across_python_versions():
+    from aureon.fail2ban.parser import _iso_to_datetime
+
+    parsed = _iso_to_datetime("2026-03-06T09:00:00.123456+0100", TZ)
+    assert parsed == datetime(2026, 3, 6, 9, 0, 0, 123456, tzinfo=TZ)
+    assert _iso_to_datetime("2026-03-06T09:00:00+25:00", TZ) is None
+
+
+def test_invalid_journal_timestamp_is_skipped_not_replaced_with_current_time():
+    fail2ban = ["2026-03-06T09:00:00+2500 afia01 fail2ban.actions[1201]: NOTICE [sshd] Ban 198.51.100.7"]
+    sshd = ["2026-03-06T09:00:00+2500 afia01 sshd[904]: Failed password for test from 192.0.2.5 port 22 ssh2"]
+    assert parse_fail2ban_journal(fail2ban, TZ) == []
+    assert parse_journal_sshd(sshd, TZ) == []
+    assert parse_auth_log(["2026-03-06T09:00:00+25:00 afia01 sshd[904]: Failed password for test from 192.0.2.5 port 22 ssh2"], TZ) == []
+
+
 def test_journal_ignores_unrelated_units():
     lines = ["2026-03-06T09:00:00+0100 afia01 CRON[5]: something NOTICE [sshd] Ban 1.2.3.4"]
     assert parse_fail2ban_journal(lines, TZ) == []

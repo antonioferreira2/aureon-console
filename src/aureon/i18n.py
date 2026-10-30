@@ -1,7 +1,7 @@
 """Stable translation keys for static UI; source-provided host evidence is preserved."""
 from __future__ import annotations
 
-SUPPORTED_LANGUAGES = ("en", "pt", "es", "fr", "de", "it", "nl")
+SUPPORTED_LANGUAGES = ("en", "pt_PT", "es", "fr", "it", "zh_CN", "ru")
 
 _NAV = {
 "en": ["Dashboard","System","Processes","Storage","Network","Services","Logs","Security (F2B)","Banned IPs","Firewall Audit","Hardening Assessment","Assessment History","F2B recommendations","Containers","Sensors","Tools","Help"],
@@ -14,9 +14,14 @@ _NAV = {
 }
 _NAV_KEYS = ("dashboard","system","processes","storage","network","services","logs","security","banned","firewall","assessment","assessment-history","wizard","containers","sensors","tools","help")
 
+# Keep the language identifiers aligned with the product's supported locales.
+_NAV["pt_PT"] = _NAV["pt"]
+_NAV["zh_CN"] = ["仪表板", "系统", "进程", "存储", "网络", "服务", "日志", "安全 (F2B)", "封禁 IP", "防火墙审计", "加固评估", "评估历史", "F2B 建议", "容器", "传感器", "工具", "帮助"]
+_NAV["ru"] = ["Обзор", "Система", "Процессы", "Хранилище", "Сеть", "Службы", "Журналы", "Безопасность (F2B)", "Заблокированные IP", "Аудит брандмауэра", "Оценка защиты", "История оценок", "Рекомендации F2B", "Контейнеры", "Датчики", "Инструменты", "Справка"]
+
 _ENGLISH = {
 "outcome.PASS":"PASS","outcome.FAIL":"FAIL","outcome.UNKNOWN":"UNKNOWN","outcome.ERROR":"ERROR","outcome.NOT_APPLICABLE":"NOT APPLICABLE",
-"status.readonly":"read-only","assessment.title":"Evidence-based hardening assessment (not certification)","assessment.score":"Hardening score","assessment.unavailable":"unavailable","assessment.evidence":"evidence","assessment.recommendation":"recommendation","assessment.verification":"verification","assessment.limitation":"limitation","assessment.scoring_method":"Weighted earned points divided by evaluated points; score is withheld if an applicable check is unknown or errored. Critical failures cap the score at 25. Not a certification.",
+"status.readonly":"read-only",    "assessment.title":"Evidence-based hardening assessment (not certification)","assessment.score":"Hardening score","assessment.unavailable":"unavailable","assessment.evidence":"evidence","assessment.recommendation":"recommendation","assessment.verification":"verification","assessment.limitation":"limitation","assessment.scoring_method":"Weighted earned points divided by evaluated points; score is withheld if an applicable check is unknown or errored. Critical failures cap the score at 25. Not a certification.",
 "ui.wizard_title":"AUREON Fail2ban configuration proposal","ui.current_state":"Current state","ui.proposal_readonly":"Proposal (nothing is written from the console)","ui.proposed_file_content":"Proposed file content","ui.reviewable_steps":"Reviewable steps (AUREON never executes recommendations)","ui.help_intro":"Read-only console for Linux servers over SSH.","ui.keys":"Keys","ui.navigate_modules":"navigate modules","ui.jump_module":"jump to a module","ui.force_refresh":"force a refresh","ui.this_help":"this help","ui.quit_readonly":"quit (nothing on the server is modified)","ui.what_is_read":"What is read","ui.device_inventory":"device inventory","ui.readonly_queries":"read-only queries","ui.bounded_queries":"bounded queries","ui.root_for_live_list":"root for the live list","ui.only_if_installed":"only if already installed","ui.what_is_never_done":"What is never done","ui.no_operational_changes":"No service restarts, firewall changes or SSH changes.","ui.no_process_kills_writes_telemetry":"No process kills, host writes or telemetry.",
 }
 
@@ -59,6 +64,124 @@ _LABELS["de"].update({"wizard_title":"AUREON Fail2ban-Konfigurationsvorschlag","
 _LABELS["it"].update({"wizard_title":"Proposta di configurazione Fail2ban di AUREON","current_state":"Stato attuale","proposal_readonly":"Proposta (la console non scrive nulla)","proposed_file_content":"Contenuto del file proposto","reviewable_steps":"Passaggi da esaminare (AUREON non esegue raccomandazioni)","help_intro":"Console Linux in sola lettura per l’amministrazione SSH.","keys":"Tasti","navigate_modules":"navigare tra i moduli","jump_module":"aprire un modulo","force_refresh":"forzare aggiornamento","this_help":"questa guida","quit_readonly":"uscire (il server non viene modificato)","what_is_read":"Dati letti","device_inventory":"inventario dispositivi","readonly_queries":"query in sola lettura","bounded_queries":"query limitate","root_for_live_list":"root richiesto per l’elenco in tempo reale","only_if_installed":"solo se già installato","what_is_never_done":"Cosa non viene mai fatto","no_operational_changes":"Nessun riavvio di servizi o modifica di firewall/SSH.","no_process_kills_writes_telemetry":"Nessuna terminazione di processi, scrittura sull’host o telemetria."})
 _LABELS["nl"].update({"wizard_title":"AUREON Fail2ban-configuratievoorstel","current_state":"Huidige toestand","proposal_readonly":"Voorstel (de console schrijft niets)","proposed_file_content":"Voorgestelde bestandsinhoud","reviewable_steps":"Te beoordelen stappen (AUREON voert aanbevelingen nooit uit)","help_intro":"Alleen-lezen Linux-console voor SSH-beheer.","keys":"Toetsen","navigate_modules":"door modules navigeren","jump_module":"module openen","force_refresh":"verversen afdwingen","this_help":"deze hulp","quit_readonly":"afsluiten (de server wordt niet gewijzigd)","what_is_read":"Wat wordt gelezen","device_inventory":"apparateninventaris","readonly_queries":"alleen-lezenopdrachten","bounded_queries":"begrensde opdrachten","root_for_live_list":"root vereist voor live lijst","only_if_installed":"alleen indien al geïnstalleerd","what_is_never_done":"Wat nooit wordt gedaan","no_operational_changes":"Geen dienstherstarts of firewall- en SSH-wijzigingen.","no_process_kills_writes_telemetry":"Geen procesbeëindiging, hostschrijfacties of telemetrie."})
 
+# Portuguese is specifically European Portuguese; ``pt`` remains an accepted
+# input alias, but the canonical configuration identifier is ``pt_PT``.
+_LABELS["pt_PT"] = _LABELS["pt"]
+_LABELS["zh_CN"] = {
+    **_LABELS["en"],
+    "host": "主机", "hostname": "主机名", "os": "操作系统", "kernel": "内核", "uptime": "运行时间",
+    "resources": "资源", "metric": "指标", "value": "数值", "usage": "使用率", "cpu": "处理器",
+    "memory": "内存", "swap": "交换空间", "user": "用户", "command": "命令", "state": "状态",
+    "filesystems": "文件系统", "mount": "挂载点", "device": "设备", "size": "大小", "used": "已用",
+    "available": "可用", "type": "类型", "interfaces_title": "网络接口", "addresses": "地址", "address": "地址",
+    "port": "端口", "listening": "监听套接字", "failed_units": "失败的单元", "service": "服务",
+    "enabled": "已启用", "description": "说明", "version": "版本", "name": "名称", "image": "镜像",
+    "status": "状态", "temperatures": "温度", "sensor": "传感器", "gpus": "图形处理器",
+    "f2b_not_installed": "系统未安装 Fail2ban。", "f2b_status": "Fail2ban 状态", "jails": "监狱",
+    "jail": "监狱", "currently_banned": "当前封禁（实时）", "firewall_local": "防火墙审计 — 仅限本地证据",
+    "detected_tools": "检测到的工具", "technology": "技术", "query": "查询", "truncated": "已截断",
+    "error": "错误", "module_unavailable": "此系统不支持此模块。", "data_unavailable": "数据不可用。",
+    "domain": "领域", "outcome": "结果", "severity": "严重程度", "check": "检查项", "unknown": "未知",
+    "help_intro": "用于通过 SSH 管理 Linux 服务器的只读控制台。", "keys": "按键",
+    "navigate_modules": "浏览模块", "force_refresh": "强制刷新", "this_help": "此帮助",
+    "quit_readonly": "退出（不会修改服务器）", "no_operational_changes": "不会重启服务，也不会更改防火墙或 SSH。",
+}
+_LABELS["ru"] = {
+    **_LABELS["en"],
+    "host": "Узел", "hostname": "Имя узла", "os": "ОС", "kernel": "Ядро", "uptime": "Время работы",
+    "resources": "Ресурсы", "metric": "Показатель", "value": "Значение", "usage": "Использование", "cpu": "Процессор",
+    "memory": "Память", "swap": "Подкачка", "user": "Пользователь", "command": "Команда", "state": "Состояние",
+    "filesystems": "Файловые системы", "mount": "Точка монтирования", "device": "Устройство", "size": "Размер",
+    "used": "Использовано", "available": "Доступно", "type": "Тип", "interfaces_title": "Сетевые интерфейсы",
+    "addresses": "Адреса", "address": "Адрес", "port": "Порт", "listening": "Открытые сокеты",
+    "failed_units": "Службы с ошибкой", "service": "Служба", "enabled": "Включено", "description": "Описание",
+    "version": "Версия", "name": "Имя", "image": "Образ", "status": "Статус", "temperatures": "Температуры",
+    "sensor": "Датчик", "gpus": "Графические процессоры", "f2b_not_installed": "Fail2ban не установлен в системе.",
+    "f2b_status": "Состояние Fail2ban", "jails": "Фильтры", "jail": "Фильтр", "currently_banned": "Сейчас заблокированы",
+    "firewall_local": "Аудит брандмауэра — только локальные данные", "detected_tools": "Обнаруженные средства",
+    "technology": "Технология", "query": "Запрос", "truncated": "Обрезано", "error": "ошибка",
+    "module_unavailable": "Этот модуль недоступен в данной системе.", "data_unavailable": "Данные недоступны.",
+    "domain": "Область", "outcome": "Результат", "severity": "Критичность", "check": "Проверка", "unknown": "неизвестно",
+    "help_intro": "Консоль только для чтения для администрирования Linux-серверов по SSH.", "keys": "Клавиши",
+    "navigate_modules": "переход по модулям", "force_refresh": "обновить принудительно", "this_help": "эта справка",
+    "quit_readonly": "выход (сервер не изменяется)", "no_operational_changes": "Службы не перезапускаются, настройки брандмауэра и SSH не меняются.",
+}
+
+# Complete the remaining fixed panel chrome for the requested locales. Raw host
+# evidence and command output intentionally remain untranslated.
+_LABELS["zh_CN"].update({
+    "ssh_jail": "SSH 防护 jail", "active": "活动", "assessed_at": "评估时间", "backend": "后端", "ban_events": "封禁事件", "banned_now": "当前封禁",
+    "bans": "封禁次数", "block_devices": "块设备", "boot_time": "启动时间", "bounded_queries": "有界查询",
+    "client_access": "客户端访问", "command_failed": "诊断命令失败；请检查命令来源和访问权限。",
+    "command_timeout": "诊断命令超时；收集的数据可能不完整。", "compare_snapshots": "使用 `aureon assess-compare OLD_ID NEW_ID` 比较评估快照。",
+    "config_dir": "配置目录", "current_state": "当前状态", "current_user": "当前用户", "currently_banned_live": "当前封禁（来自 fail2ban-client）",
+    "data_available": "数据可用", "default": "默认", "definition": "定义", "device_inventory": "设备清单", "devices": "设备",
+    "distinct_banned_ips": "不同的被封 IP", "docker_denied": "Docker 守护进程可访问，但权限被拒绝。",
+    "docker_denied_detail": "请检查 Docker 访问权限；AUREON 不会修改这些权限。", "enabled_at_boot": "已设置为开机启用",
+    "end": "结束", "errors": "错误", "events": "事件", "f2b_no_install": "AUREON 不会自动安装软件。",
+    "failed": "失败", "failed_ssh": "SSH 失败次数", "field": "字段", "historical_bans_period": "本期历史记录中的被封地址",
+    "installed": "已安装", "ips_unbanned": "已解封 IP", "jump_module": "跳转到模块", "last_ban_event": "最近封禁事件",
+    "last_event": "最近事件", "license": "许可证", "lines": "行", "live_ban_unavailable": "实时封禁列表不可用。",
+    "load": "系统负载 (1/5/15)", "local_images": "本地镜像", "log": "日志", "log_source": "日志来源",
+    "log_truncated": "输出已截断：请增大 max_log_lines 或缩小筛选范围。", "logical_volumes": "逻辑卷", "max_observed": "观测到的最大值",
+    "model": "型号", "most_active_addresses": "今日最活跃的地址", "never_terminate": "AUREON 不会终止进程。", "no": "否",
+    "no_assessments_detail": "没有已保存的评估。运行 `aureon assess` 保存首个快照。", "no_data": "无数据", "no_events": "无事件",
+    "no_historical_bans": "本期没有已存储的历史封禁事件。", "no_process_kills_writes_telemetry": "不会终止进程、写入主机或发送遥测数据。",
+    "no_sensor_data": "此硬件或内核未提供传感器读数。", "none": "无", "none_configured": "未配置",
+    "not_installed": "未安装", "only_if_installed": "仅在已安装时", "optional_tools": "可选工具（仅检测，不由 AUREON 安装）",
+    "origin": "来源", "other_sensors": "其他传感器", "package": "软件包", "period": "时间段",
+    "permission_denied_detail": "权限不足；请检查相关诊断数据源的访问权限。", "problem": "问题", "processes_cpu": "CPU 使用率最高的进程",
+    "proposal_readonly": "建议（控制台不会写入任何内容）", "proposed_file_content": "建议的文件内容", "purpose": "用途",
+    "readable": "可读取", "readonly_queries": "只读查询", "readonly_service": "只读：AUREON 不会重启服务。",
+    "readonly_unban": "只读：无法执行解封操作。", "recurrent": "重复出现", "recurrent_ips": "重复出现的 IP",
+    "restart_loops": "反复重启的容器", "restarts": "重启次数", "reviewable_steps": "供审阅的步骤（AUREON 不会执行建议）",
+    "root_for_live_bans": "需要 root：运行 `sudo aureon`。AUREON 不会伪造此列表。", "root_for_live_list": "实时列表需要 root 权限",
+    "root_required": "需要 root 权限", "rotational": "机械硬盘", "running": "运行中", "security_stats": "安全统计（已保存的历史数据）",
+    "since": "起始时间", "since_relative": "起始时间（相对）", "socket_warning": "监听端口并不证明可从互联网访问；还需考虑防火墙和路由。",
+    "solid_state": "固态硬盘", "ssh_jail": "SSH jail", "start": "开始", "sub": "子状态", "temperature": "温度",
+    "timezone": "时区", "today": "今天", "tool": "工具", "total": "总计", "total_bans": "封禁总数", "transport": "传输方式",
+    "unban_events": "解封事件", "unique_ips": "唯一 IP 数", "unit": "单元", "unverified": "未验证", "use_in_aureon": "在 AUREON 中的用途",
+    "utilisation": "利用率", "what_is_never_done": "绝不会执行的操作", "what_is_read": "读取的数据", "window": "统计窗口",
+    "wizard_title": "AUREON Fail2ban 配置建议", "yes": "是",
+})
+_LABELS["ru"].update({
+    "active": "Активно", "assessed_at": "Время оценки", "backend": "Источник", "ban_events": "События блокировки", "banned_now": "Заблокированы сейчас",
+    "bans": "Блокировки", "block_devices": "Блочные устройства", "boot_time": "Время загрузки", "bounded_queries": "Ограниченные запросы",
+    "client_access": "Доступ клиента", "command_failed": "Ошибка диагностической команды; проверьте источник и права доступа.",
+    "command_timeout": "Истекло время ожидания диагностической команды; данные могут быть неполными.", "compare_snapshots": "Сравните снимки командой `aureon assess-compare OLD_ID NEW_ID`.",
+    "config_dir": "Каталог конфигурации", "current_state": "Текущее состояние", "current_user": "Текущий пользователь", "currently_banned_live": "Заблокированы сейчас (по fail2ban-client)",
+    "data_available": "Данные доступны", "default": "По умолчанию", "definition": "Описание", "device_inventory": "Инвентаризация устройств", "devices": "Устройства",
+    "distinct_banned_ips": "Уникальные заблокированные IP", "docker_denied": "Демон Docker доступен, но в доступе отказано.",
+    "docker_denied_detail": "Проверьте права доступа к Docker; AUREON их не меняет.", "enabled_at_boot": "Включено при загрузке",
+    "end": "Окончание", "errors": "Ошибки", "events": "События", "f2b_no_install": "AUREON не устанавливает программное обеспечение автоматически.",
+    "failed": "Сбой", "failed_ssh": "Ошибки SSH", "field": "Поле", "historical_bans_period": "Заблокированные адреса в истории за текущий период",
+    "installed": "Установлено", "ips_unbanned": "Разблокированные IP", "jump_module": "Перейти к модулю", "last_ban_event": "Последняя блокировка",
+    "last_event": "Последнее событие", "license": "Лицензия", "lines": "строк", "live_ban_unavailable": "Список текущих блокировок недоступен.",
+    "load": "Нагрузка (1/5/15)", "local_images": "Локальные образы", "log": "Журнал", "log_source": "Источник журнала",
+    "log_truncated": "Вывод обрезан: увеличьте max_log_lines или сузьте фильтр.", "logical_volumes": "Логические тома", "max_observed": "Максимальное значение",
+    "model": "Модель", "most_active_addresses": "Самые активные адреса сегодня", "never_terminate": "AUREON никогда не завершает процессы.", "no": "нет",
+    "no_assessments_detail": "Нет сохранённых оценок. Выполните `aureon assess`, чтобы сохранить первый снимок.", "no_data": "нет данных", "no_events": "нет событий",
+    "no_historical_bans": "За текущий период исторические события блокировки не сохранены.", "no_process_kills_writes_telemetry": "Нет завершения процессов, записи на узел или телеметрии.",
+    "no_sensor_data": "Оборудование или ядро не предоставляет показания датчиков.", "none": "нет", "none_configured": "не настроено",
+    "not_installed": "не установлено", "only_if_installed": "только если уже установлено", "optional_tools": "Дополнительные средства (обнаруживаются, но не устанавливаются AUREON)",
+    "origin": "Источник", "other_sensors": "Другие датчики", "package": "Пакет", "period": "Период",
+    "permission_denied_detail": "Недостаточно прав; проверьте доступ к соответствующему источнику диагностики.", "problem": "ПРОБЛЕМА", "processes_cpu": "Процессы с наибольшей загрузкой ЦП",
+    "proposal_readonly": "Предложение (консоль ничего не записывает)", "proposed_file_content": "Предлагаемое содержимое файла", "purpose": "Назначение",
+    "readable": "доступен для чтения", "readonly_queries": "запросы только для чтения", "readonly_service": "Только чтение: AUREON не перезапускает службы.",
+    "readonly_unban": "Только чтение: разблокировка недоступна.", "recurrent": "Повторный", "recurrent_ips": "Повторяющиеся IP",
+    "restart_loops": "Контейнеры с частыми перезапусками", "restarts": "Перезапуски", "reviewable_steps": "Шаги для проверки (AUREON не выполняет рекомендации)",
+    "root_for_live_bans": "Требуется root: выполните `sudo aureon`. AUREON не подделывает этот список.", "root_for_live_list": "Для текущего списка требуются права root",
+    "root_required": "Требуются права root", "rotational": "жёсткий диск", "running": "работает", "security_stats": "Статистика безопасности (сохранённая история)",
+    "since": "С", "since_relative": "С (относительное время)", "socket_warning": "Прослушиваемый порт не доказывает доступность из Интернета: важны firewall и маршрутизация.",
+    "solid_state": "твердотельный накопитель", "ssh_jail": "Фильтр SSH", "start": "Начало", "sub": "Подсостояние", "temperature": "Температура",
+    "timezone": "Часовой пояс", "today": "Сегодня", "tool": "Средство", "total": "всего", "total_bans": "Всего блокировок", "transport": "Транспорт",
+    "unban_events": "События разблокировки", "unique_ips": "Уникальные IP", "unit": "Единица", "unverified": "не проверено", "use_in_aureon": "Использование в AUREON",
+    "utilisation": "Использование", "what_is_never_done": "Что никогда не выполняется", "what_is_read": "Что читается", "window": "Интервал",
+    "wizard_title": "Предложение по настройке Fail2ban для AUREON", "yes": "да",
+})
+
+# Drop legacy German/Dutch catalogs: they are not product locales. The old
+# short Portuguese code remains accepted by normalize_language as an alias.
 _OUTCOMES = {
     "en": ["PASS", "FAIL", "UNKNOWN", "ERROR", "NOT APPLICABLE"],
     "pt": ["OK", "FALHA", "DESCONHECIDO", "ERRO", "NÃO APLICÁVEL"],
@@ -67,6 +190,9 @@ _OUTCOMES = {
     "de": ["BESTANDEN", "FEHLER", "UNBEKANNT", "FEHLER", "NICHT ANWENDBAR"],
     "it": ["SUPERATO", "NON RIUSCITO", "SCONOSCIUTO", "ERRORE", "NON APPLICABILE"],
     "nl": ["GESLAAGD", "MISLUKT", "ONBEKEND", "FOUT", "NIET VAN TOEPASSING"],
+    "pt_PT": ["OK", "FALHA", "DESCONHECIDO", "ERRO", "NÃO APLICÁVEL"],
+    "zh_CN": ["通过", "失败", "未知", "错误", "不适用"],
+    "ru": ["УСПЕХ", "ОШИБКА", "НЕИЗВЕСТНО", "СБОЙ", "НЕ ПРИМЕНИМО"],
 }
 _OUTCOME_KEYS = ("PASS", "FAIL", "UNKNOWN", "ERROR", "NOT_APPLICABLE")
 _ASSESSMENT = {
@@ -77,6 +203,9 @@ _ASSESSMENT = {
     "de": ["Evidenzbasierte Hardening-Bewertung (keine Zertifizierung)", "Hardening-Wert", "nicht verfügbar", "Nachweis", "Empfehlung", "Prüfung", "Einschränkung"],
     "it": ["Valutazione hardening basata su prove (non certificazione)", "Punteggio hardening", "non disponibile", "evidenza", "raccomandazione", "verifica", "limite"],
     "nl": ["Op bewijs gebaseerde hardeningbeoordeling (geen certificering)", "Hardingscore", "niet beschikbaar", "bewijs", "aanbeveling", "verificatie", "beperking"],
+    "pt_PT": ["Avaliação de hardening baseada em evidências (não é certificação)", "Pontuação de hardening", "indisponível", "evidência", "recomendação", "verificação", "limitação"],
+    "zh_CN": ["基于证据的加固评估（非认证）", "加固评分", "不可用", "证据", "建议", "验证", "限制"],
+    "ru": ["Оценка защищённости на основе данных (не сертификация)", "Оценка защищённости", "недоступно", "свидетельства", "рекомендация", "проверка", "ограничение"],
 }
 
 _SCORING_METHOD = {
@@ -87,16 +216,19 @@ _SCORING_METHOD = {
     "de": "Gewichtete erreichte Punkte geteilt durch bewertete Punkte; der Wert entfällt, wenn eine anwendbare Prüfung unbekannt ist oder einen Fehler hat. Kritische Fehler begrenzen ihn auf 25. Keine Zertifizierung.",
     "it": "Punti ponderati ottenuti divisi per i punti valutati; il punteggio è omesso se un controllo applicabile è sconosciuto o in errore. I risultati critici lo limitano a 25. Non è una certificazione.",
     "nl": "Gewogen behaalde punten gedeeld door beoordeelde punten; de score wordt weggelaten als een toepasselijke controle onbekend is of een fout oplevert. Kritieke fouten begrenzen deze op 25. Geen certificering.",
+    "pt_PT": "Pontos ponderados obtidos divididos pelos pontos avaliados; a pontuação é omitida se alguma verificação aplicável for desconhecida ou tiver erro. Falhas críticas limitam-na a 25. Não é uma certificação.",
+    "zh_CN": "加权得分除以已评估分值；若任何适用检查结果未知或出错，则不显示评分。严重失败会将评分限制为 25。这不是认证。",
+    "ru": "Взвешенные набранные баллы делятся на оценённые; оценка не показывается, если применимая проверка неизвестна или завершилась ошибкой. Критические сбои ограничивают её значением 25. Это не сертификация.",
 }
 _ASSESSMENT_KEYS = ("title", "score", "unavailable", "evidence", "recommendation", "verification", "limitation")
 _CATALOG = {
     "en": {**_ENGLISH, **{f"outcome.{key}": value for key, value in zip(_OUTCOME_KEYS, _OUTCOMES["en"])}, **{f"assessment.{key}": value for key, value in zip(_ASSESSMENT_KEYS, _ASSESSMENT["en"])}, "assessment.scoring_method": _SCORING_METHOD["en"], **{f"nav.{key}": value for key, value in zip(_NAV_KEYS, _NAV["en"])}, **{f"ui.{key}": value for key, value in _LABELS["en"].items()}},
-    **{locale: {**_ENGLISH, **{f"outcome.{key}": value for key, value in zip(_OUTCOME_KEYS, _OUTCOMES[locale])}, **{f"assessment.{key}": value for key, value in zip(_ASSESSMENT_KEYS, _ASSESSMENT[locale])}, "assessment.scoring_method": _SCORING_METHOD[locale], **{f"nav.{key}": value for key, value in zip(_NAV_KEYS, _NAV[locale])}, **{f"ui.{key}": value for key, value in _LABELS[locale].items()}} for locale in _NAV},
+    **{locale: {**_ENGLISH, **{f"outcome.{key}": value for key, value in zip(_OUTCOME_KEYS, _OUTCOMES[locale])}, **{f"assessment.{key}": value for key, value in zip(_ASSESSMENT_KEYS, _ASSESSMENT[locale])}, "assessment.scoring_method": _SCORING_METHOD[locale], **{f"nav.{key}": value for key, value in zip(_NAV_KEYS, _NAV[locale])}, **{f"ui.{key}": value for key, value in _LABELS[locale].items()}} for locale in _NAV if locale != "en"},
 }
 
 
 # Remaining chrome used by panels and the main application.
-_CATALOG["pt"].update({"status.readonly":"só de leitura", "assessment.limitation":"limitação", "ui.kernel":"Núcleo", "ui.cpu":"CPU", "ui.swap":"Swap", "ui.interfaces_title":"Interfaces", "ui.total":"total", "ui.sensor":"Sensor", "ui.gpus":"GPUs", "ui.jails":"Jails", "ui.jail":"Jail", "ui.never_terminate":"O AUREON nunca termina processos.", "ui.unknown":"desconhecido", "ui.domain":"Domínio", "ui.outcome":"Resultado", "ui.severity":"Gravidade", "ui.check":"Verificação", "ui.error":"erro", "ui.no_assessments_detail":"Sem avaliações guardadas. Execute `aureon assess` para guardar a primeira."})
+_CATALOG["pt_PT"].update({"status.readonly":"só de leitura", "assessment.limitation":"limitação", "ui.kernel":"Núcleo", "ui.cpu":"CPU", "ui.swap":"Swap", "ui.interfaces_title":"Interfaces", "ui.total":"total", "ui.sensor":"Sensor", "ui.gpus":"GPUs", "ui.jails":"Jails", "ui.jail":"Jail", "ui.never_terminate":"O AUREON nunca termina processos.", "ui.unknown":"desconhecido", "ui.domain":"Domínio", "ui.outcome":"Resultado", "ui.severity":"Gravidade", "ui.check":"Verificação", "ui.error":"erro", "ui.no_assessments_detail":"Sem avaliações guardadas. Execute `aureon assess` para guardar a primeira."})
 _CATALOG["es"].update({"status.readonly":"solo lectura", "assessment.limitation":"limitación", "ui.host":"Host", "ui.kernel":"Núcleo", "ui.cpu":"CPU", "ui.swap":"Intercambio", "ui.interfaces_title":"Interfaces", "ui.total":"total", "ui.sensor":"Sensor", "ui.gpus":"GPU", "ui.jails":"Jails", "ui.jail":"Jail", "ui.no":"no", "ui.never_terminate":"AUREON nunca termina procesos.", "ui.most_active_addresses":"Direcciones más activas hoy", "ui.live_ban_unavailable":"Lista de bloqueos en vivo no disponible.", "ui.root_for_live_bans":"Requiere root: ejecute `sudo aureon`. AUREON no inventa esta lista.", "ui.no_historical_bans":"No hay eventos históricos de bloqueo en el período actual.", "ui.readonly_unban":"Solo lectura: no se puede desbloquear desde AUREON.", "ui.error":"error", "ui.no_assessments_detail":"No hay evaluaciones guardadas. Ejecute `aureon assess` para guardar la primera."})
 _CATALOG["fr"].update({"status.readonly":"lecture seule", "assessment.limitation":"limite", "ui.cpu":"CPU", "ui.swap":"Swap", "ui.interfaces_title":"Interfaces", "ui.total":"total", "ui.jails":"Jails", "ui.jail":"Jail", "ui.never_terminate":"AUREON ne termine jamais de processus.", "ui.most_active_addresses":"Adresses les plus actives aujourd’hui", "ui.live_ban_unavailable":"Liste des bannissements en direct indisponible.", "ui.root_for_live_bans":"Droits root requis : exécutez `sudo aureon`. AUREON ne fabrique jamais cette liste.", "ui.no_historical_bans":"Aucun événement historique de bannissement pour la période actuelle.", "ui.readonly_unban":"Lecture seule : le débannissement n’est pas disponible.", "ui.no_assessments_detail":"Aucune évaluation enregistrée. Exécutez `aureon assess` pour enregistrer le premier instantané."})
 _CATALOG["de"].update({"status.readonly":"schreibgeschützt", "assessment.limitation":"Einschränkung", "ui.host":"Host", "ui.kernel":"Kernel", "ui.cpu":"CPU", "ui.swap":"Auslagerungsspeicher", "ui.sensor":"Sensor", "ui.gpus":"GPUs", "ui.jails":"Jails", "ui.jail":"Jail", "ui.never_terminate":"AUREON beendet niemals Prozesse.", "ui.most_active_addresses":"Aktivste Adressen heute", "ui.live_ban_unavailable":"Live-Sperrliste nicht verfügbar.", "ui.root_for_live_bans":"Root erforderlich: `sudo aureon` ausführen. AUREON erfindet diese Liste nicht.", "ui.no_historical_bans":"Keine historischen Sperrereignisse im aktuellen Zeitraum.", "ui.readonly_unban":"Schreibgeschützt: Entsperren ist nicht verfügbar.", "ui.no_assessments_detail":"Keine gespeicherten Bewertungen. `aureon assess` speichert den ersten Snapshot."})
@@ -111,9 +243,24 @@ _CATALOG["de"].update({"ui.cpu":"Prozessor", "ui.definition":"Begriffsdefinition
 _CATALOG["it"].update({"ui.cpu":"Processore", "ui.host":"Server", "ui.jail":"Filtro Fail2ban", "ui.kernel":"Nucleo", "ui.load":"Carico (1/5/15)", "ui.log_truncated":"Output troncato: aumentare max_log_lines o restringere il filtro.", "ui.logical_volumes":"volumi logici", "ui.model":"Modello", "ui.no":"assente", "ui.query":"Interrogazione", "ui.rotational":"disco rotante", "ui.solid_state":"unità a stato solido", "ui.transport":"Interfaccia di trasporto", "ui.unit":"Unità"})
 _CATALOG["nl"].update({"ui.cpu":"Processor", "ui.host":"Server", "ui.image":"Softwarekopie", "ui.interfaces_title":"Netwerkinterfaces", "ui.jail":"Fail2ban-filter", "ui.jails":"Fail2ban-filters", "ui.kernel":"Besturingskern", "ui.load":"Belasting (1/5/15)", "ui.log_truncated":"Uitvoer afgekapt: verhoog max_log_lines of beperk het filter.", "ui.logical_volumes":"logische volumes", "ui.model":"Productmodel", "ui.query":"Zoekopdracht", "ui.rotational":"draaiende schijf", "ui.sensor":"Sensormeting", "ui.solid_state":"ssd", "ui.status":"Toestand", "ui.transport":"Transportverbinding", "ui.type":"Bestandssysteemtype", "ui.unit":"Eenheid", "ui.uptime":"Actieve tijd"})
 
+# Expose only the seven promised locale identifiers. ``pt`` remains an input
+# alias for backwards compatibility, not a separate product language.
+_CATALOG["pt_PT"] = _CATALOG["pt"]
+_CATALOG["pt_PT"].update({"outcome.PASS": "OK", "outcome.FAIL": "FALHA", "outcome.UNKNOWN": "DESCONHECIDO", "outcome.ERROR": "ERRO", "outcome.NOT_APPLICABLE": "NÃO APLICÁVEL"})
+_CATALOG = {locale: _CATALOG[locale] for locale in SUPPORTED_LANGUAGES}
+_CATALOG["pt_PT"]["status.readonly"] = "só de leitura"
+_CATALOG["zh_CN"]["status.readonly"] = "只读"
+_CATALOG["zh_CN"]["ui.ssh_jail"] = "SSH 防护 jail"
+_CATALOG["ru"]["status.readonly"] = "только чтение"
+
 
 def normalize_language(language: str) -> str:
-    candidate = (language or "en").replace("_", "-").split("-", 1)[0].lower()
+    """Return a canonical supported locale, accepting common BCP-47 spellings."""
+    value = (language or "en").strip().replace("_", "-").lower()
+    aliases = {"pt": "pt_PT", "pt-pt": "pt_PT", "zh": "zh_CN", "zh-cn": "zh_CN"}
+    if value in aliases:
+        return aliases[value]
+    candidate = value.split("-", 1)[0]
     return candidate if candidate in SUPPORTED_LANGUAGES else "en"
 
 

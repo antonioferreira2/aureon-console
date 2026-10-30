@@ -26,4 +26,4 @@ La migration de schéma vers la version 2 ajoute la table `assessments` et conse
 
 ## Langues
 
-La navigation et les libellés d’évaluation sont disponibles en anglais (`en`), portugais (`pt`), espagnol (`es`), français (`fr`), allemand (`de`), italien (`it`) et néerlandais (`nl`). Définissez `language` dans `config.toml` ou `AUREON_LANGUAGE`. Toute valeur non prise en charge utilise l’anglais. Les preuves et textes provenant de l’hôte conservent leur langue d’origine pour préserver leur provenance.
+L’interface prend en charge l’anglais (`en`), le portugais européen (`pt_PT` ; `pt` reste accepté comme alias), l’espagnol (`es`), le français (`fr`), l’italien (`it`), le chinois simplifié (`zh_CN`) et le russe (`ru`). Définissez `language` dans `config.toml` ou `AUREON_LANGUAGE`. Toute valeur non prise en charge utilise l’anglais. Les preuves et textes provenant de l’hôte conservent leur langue d’origine pour préserver leur provenance.

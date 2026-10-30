@@ -26,4 +26,4 @@ A migração de schema para versão 2 acrescenta a tabela `assessments` e preser
 
 ## Idiomas
 
-A navegação e os rótulos da avaliação suportam inglês (`en`), português (`pt`), espanhol (`es`), francês (`fr`), alemão (`de`), italiano (`it`) e neerlandês (`nl`). Configure `language` em `config.toml` ou `AUREON_LANGUAGE`. Valores não suportados usam inglês. Evidências e texto obtido do servidor mantêm o idioma original para preservar a proveniência.
+A interface suporta inglês (`en`), português europeu (`pt_PT`; `pt` é aceite como alias), espanhol (`es`), francês (`fr`), italiano (`it`), chinês simplificado (`zh_CN`) e russo (`ru`). Configure `language` em `config.toml` ou `AUREON_LANGUAGE`. Valores não suportados usam inglês. Evidências e texto obtido do servidor mantêm o idioma original para preservar a proveniência.

@@ -135,6 +135,8 @@ def parse_fail2ban_journal(
             continue
         body = match.group("body")
         moment = _iso_to_datetime(match.group("iso"), tzinfo)
+        if moment is None:
+            continue
 
         event_match = FAIL2BAN_ACTION_RE.search(body)
         if event_match and "fail2ban" in match.group("proc"):
@@ -187,11 +189,14 @@ def parse_auth_log(
         raw = raw.rstrip("\n")
         iso_match = AUTH_ISO_RE.match(raw)
         if iso_match:
+            moment = _iso_to_datetime(iso_match.group("iso"), tzinfo)
+            if moment is None:
+                continue
             event = _auth_event_from_body(
                 raw,
                 iso_match.group("msg"),
                 iso_match.group("proc"),
-                _iso_to_datetime(iso_match.group("iso"), tzinfo),
+                moment,
                 source,
             )
             if event:
@@ -251,14 +256,18 @@ def _clean_ip(value: str) -> str:
     return value
 
 
-def _iso_to_datetime(value: str, tzinfo) -> datetime:
+def _iso_to_datetime(value: str, tzinfo) -> Optional[datetime]:
+    """Parse ISO timestamps across supported Python versions, never invent time."""
     value = value.strip()
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    # Python 3.10+ accepts compact offsets in fromisoformat; normalize them
+    # explicitly so Python 3.9 interprets journalctl's ``+0100`` correctly.
+    value = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", value)
     try:
-        # fromisoformat preserves fractional seconds and accepts both coloned
-        # and compact UTC offsets used by journalctl/rsyslog.
-        parsed = datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
-        return datetime.now(tzinfo)  # pragma: no cover - journalctl always emits ISO
+        return None
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=tzinfo)
     return parsed.astimezone(tzinfo)
@@ -276,11 +285,14 @@ def parse_journal_sshd(lines: Iterable[str], tzinfo, source: str = "journal-sshd
             continue
         if "Accepted " in match.group("body"):
             continue
+        moment = _iso_to_datetime(match.group("iso"), tzinfo)
+        if moment is None:
+            continue
         event = _auth_event_from_body(
             match.group(0),
             match.group("body"),
             match.group("proc"),
-            _iso_to_datetime(match.group("iso"), tzinfo),
+            moment,
             source,
         )
         if event:

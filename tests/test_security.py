@@ -16,16 +16,16 @@ def test_commands_never_use_a_shell(monkeypatch):
     import subprocess
 
     seen = {}
-    original = subprocess.run
+    original = subprocess.Popen
 
     def spy(argv, **kwargs):
         seen["shell"] = kwargs.get("shell")
         seen["argv"] = argv
-        return original(["true"], capture_output=True, text=True)
+        return original(["cmd", "/c", "exit", "0"], **kwargs) if os.name == "nt" else original(["true"], **kwargs)
 
-    monkeypatch.setattr(subprocess, "run", spy)
+    monkeypatch.setattr(subprocess, "Popen", spy)
     run(["echo", "safe"], timeout=3)
-    assert seen["shell"] in (None, False)
+    assert seen["shell"] is False
 
 
 def test_dangerous_characters_are_passed_literally():

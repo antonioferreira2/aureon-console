@@ -141,7 +141,7 @@ def test_full_assessment_exports_are_private_and_complete(tmp_path):
 
 
 def test_seven_language_catalogue_and_fallback():
-    assert SUPPORTED_LANGUAGES == ("en", "pt", "es", "fr", "de", "it", "nl")
+    assert SUPPORTED_LANGUAGES == ("en", "pt_PT", "es", "fr", "it", "zh_CN", "ru")
     for language in SUPPORTED_LANGUAGES:
         items = navigation(language)
         assert len(items) == 17
@@ -179,6 +179,8 @@ def test_every_static_panel_label_has_a_translation_for_each_locale():
     for language in SUPPORTED_LANGUAGES[1:]:
         untranslated = [key for key in keys if _CATALOG[language][key] == _CATALOG["en"].get(key)]
         assert not untranslated, f"{language} still uses English for panel labels: {sorted(untranslated)}"
-    assert normalize_language("pt-PT") == "pt"
+    assert normalize_language("pt-PT") == "pt_PT"
+    assert normalize_language("pt") == "pt_PT"
+    assert normalize_language("zh-cn") == "zh_CN"
     assert tr("assessment.title", "xx") == tr("assessment.title", "en")
     assert tr("missing.key", "en") == "missing.key"

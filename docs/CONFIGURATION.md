@@ -21,7 +21,7 @@ $EDITOR ~/.config/aureon/config.toml
 | Key | Default | Meaning |
 |---|---|---|
 | `timezone` | `""` | Empty = follow the server (`/etc/timezone`, then `/etc/localtime`). Set e.g. `Europe/Lisbon`. |
-| `language` | `en` | Terminal navigation and assessment labels: `en`, `pt`, `es`, `fr`, `de`, `it`, `nl`; other values fall back to English. |
+| `language` | `en` | Terminal navigation and assessment labels: `en`, `pt_PT`, `es`, `fr`, `it`, `zh_CN`, `ru` (`pt` is an alias); other values fall back to English. |
 | `refresh_seconds` | `3.0` | Auto-refresh interval of the console. |
 | `command_timeout` | `8.0` | Hard timeout for every external command. |
 | `max_log_lines` | `500` | Upper bound for any log query. |
@@ -46,7 +46,7 @@ The file is created with mode `0600`.
 | `AUREON_DB` | Full path to the SQLite file (overrides `state_dir`) |
 | `AUREON_CONFIG_DIR` | Config directory |
 | `AUREON_TZ` | Timezone name |
-| `AUREON_LANGUAGE` | UI language (`en`, `pt`, `es`, `fr`, `de`, `it`, `nl`) |
+| `AUREON_LANGUAGE` | UI language (`en`, `pt_PT`, `es`, `fr`, `it`, `zh_CN`, `ru`; `pt` is accepted as an alias for `pt_PT`) |
 | `AUREON_REFRESH` | Refresh interval |
 | `AUREON_TIMEOUT` | Command timeout |
 | `AUREON_THEME` | Theme name |

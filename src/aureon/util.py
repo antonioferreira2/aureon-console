@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -68,41 +69,85 @@ def run(
     max_bytes: int = MAX_OUTPUT_BYTES,
     env: Optional[Dict[str, str]] = None,
 ) -> CommandResult:
-    """Run *argv* without a shell, enforcing a timeout and an output cap."""
+    """Run argv without a shell; enforce a deadline and combined output cap."""
     argv = [str(a) for a in argv]
     started = time.monotonic()
+    if max_bytes < 0:
+        raise ValueError("max_bytes must be non-negative")
     full_env = None
     if env is not None:
         full_env = dict(os.environ)
         full_env.update(env)
     try:
-        proc = subprocess.run(  # noqa: S603 - argv vector, shell=False
+        proc = subprocess.Popen(  # noqa: S603 - argv vector, shell=False
             argv,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             env=full_env,
-            check=False,
+            shell=False,
         )
     except FileNotFoundError as exc:
         return CommandResult(argv, 127, "", str(exc), time.monotonic() - started)
     except PermissionError as exc:
         return CommandResult(argv, 126, "", str(exc), time.monotonic() - started)
-    except subprocess.TimeoutExpired as exc:
-        out = exc.stdout or ""
-        if isinstance(out, bytes):  # pragma: no cover - defensive
-            out = out.decode("utf-8", "replace")
-        err = exc.stderr or ""
-        if isinstance(err, bytes):  # pragma: no cover - defensive
-            err = err.decode("utf-8", "replace")
-        return CommandResult(argv, 124, out[:max_bytes], err, time.monotonic() - started, timed_out=True)
 
-    truncated = False
-    stdout = proc.stdout
-    if len(stdout) > max_bytes:
-        stdout = stdout[:max_bytes]
-        truncated = True
-    return CommandResult(argv, proc.returncode, stdout, proc.stderr, time.monotonic() - started, truncated=truncated)
+    streams = (proc.stdout, proc.stderr)
+    buffers = [bytearray(), bytearray()]
+    captured = 0
+    capture_lock = threading.Lock()
+    output_exceeded = threading.Event()
+
+    def drain(stream, index):
+        nonlocal captured
+        try:
+            while True:
+                chunk = os.read(stream.fileno(), 65536)
+                if not chunk:
+                    return
+                with capture_lock:
+                    room = max_bytes - captured
+                    retained = min(max(0, room), len(chunk))
+                    if retained:
+                        buffers[index].extend(chunk[:retained])
+                        captured += retained
+                    if retained < len(chunk):
+                        output_exceeded.set()
+        except OSError:
+            return
+
+    readers = [threading.Thread(target=drain, args=(stream, index), daemon=True) for index, stream in enumerate(streams) if stream is not None]
+    for reader in readers:
+        reader.start()
+
+    deadline = started + max(0.0, timeout)
+    timed_out = False
+    while proc.poll() is None:
+        if output_exceeded.is_set():
+            break
+        if time.monotonic() >= deadline:
+            timed_out = True
+            break
+        time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
+
+    if timed_out or output_exceeded.is_set():
+        proc.kill()
+    try:
+        returncode = proc.wait(timeout=1.0)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        returncode = proc.wait()
+    for reader in readers:
+        reader.join(timeout=1.0)
+    for stream in streams:
+        if stream is not None:
+            stream.close()
+
+    stdout = bytes(buffers[0]).decode("utf-8", "replace")
+    stderr = bytes(buffers[1]).decode("utf-8", "replace")
+    truncated = output_exceeded.is_set()
+    if timed_out:
+        return CommandResult(argv, 124, stdout, stderr, time.monotonic() - started, timed_out=True, truncated=truncated)
+    return CommandResult(argv, returncode, stdout, stderr, time.monotonic() - started, truncated=truncated)
 
 
 @dataclass

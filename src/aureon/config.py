@@ -63,7 +63,7 @@ class Config:
 
     # Behaviour
     timezone: str = ""            # empty = follow server /etc/timezone
-    language: str = "en"          # en, pt, es, fr, de, it, nl
+    language: str = "en"          # en, pt_PT, es, fr, it, zh_CN, ru (pt accepted as alias)
     refresh_seconds: float = 3.0
     command_timeout: float = DEFAULT_TIMEOUT
     max_log_lines: int = 500

@@ -1,6 +1,6 @@
 # Hardening assessment
 
-Translated guides: [Português](HARDENING.pt.md) · [Español](HARDENING.es.md) · [Français](HARDENING.fr.md) · [Deutsch](HARDENING.de.md) · [Italiano](HARDENING.it.md) · [Nederlands](HARDENING.nl.md).
+Translated guides: [Português europeu](HARDENING.pt.md) · [Español](HARDENING.es.md) · [Français](HARDENING.fr.md) · [Italiano](HARDENING.it.md) · [简体中文](HARDENING.zh_CN.md) · [Русский](HARDENING.ru.md).
 
 AUREON assessments are local, read-only observations—not a certification, penetration test, or proof of external exposure. The application does not apply recommendations or change audited-host operational state. Only its own history database and explicitly requested report files are written.
 
@@ -28,4 +28,4 @@ The database migration to schema version 2 adds the `assessments` table and pres
 
 ## Language
 
-The terminal navigation, panel chrome and assessment labels support English (`en`), Portuguese (`pt`), Spanish (`es`), French (`fr`), German (`de`), Italian (`it`) and Dutch (`nl`). Set `language` in `config.toml` or `AUREON_LANGUAGE`; unsupported values safely fall back to English. Check evidence and host-provided strings remain in their source language to preserve accuracy. Translation coverage of all fixed labels in the panels and main app is asserted by the test suite; the full project documentation is not translated.
+The terminal navigation, panel chrome and assessment labels support English (`en`), European Portuguese (`pt_PT`, with `pt` accepted as an alias), Spanish (`es`), French (`fr`), Italian (`it`), Simplified Chinese (`zh_CN`) and Russian (`ru`). Set `language` in `config.toml` or `AUREON_LANGUAGE`; unsupported values safely fall back to English. Check evidence and host-provided strings remain in their source language to preserve accuracy. Translation coverage of all fixed labels in the panels and main app is asserted by the test suite. The hardening guide is translated into the six non-English locales; the rest of the project documentation remains canonical in English.

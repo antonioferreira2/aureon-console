@@ -243,6 +243,14 @@ def test_firewall_assesses_explicit_restrictive_defaults_and_unknown_complex_rul
     nft.evidence[0].output = "table inet filter {\n chain input { type filter hook input priority filter; policy drop; ip saddr 192.0.2.0/24 tcp dport 22 accept; }\n}\n"
     assert assess_firewall(nft)[1].outcome == Outcome.UNKNOWN
 
+    firewalld = FirewallInfo(detected=["firewalld"], evidence=[
+        FirewallEvidence("firewalld", "runtime state", Availability.OK, "running\n"),
+        FirewallEvidence("firewalld", "runtime zones", Availability.OK, "public\n  interfaces: eth0\n  services: ssh\n  ports: 8080/tcp\n"),
+    ])
+    # The collector preserves zone data, but no complete zone/exposure policy
+    # evaluator exists yet; do not mistake a running daemon for a safe policy.
+    assert assess_firewall(firewalld)[1].outcome == Outcome.UNKNOWN
+
     iptables = FirewallInfo(detected=["iptables"], evidence=[
         FirewallEvidence("iptables", "IPv4 rules", Availability.OK, "-P INPUT DROP\n-P FORWARD DROP\n-P OUTPUT DROP\n"),
         FirewallEvidence("iptables", "IPv6 rules", Availability.OK, "-P INPUT REJECT\n-P FORWARD DROP\n-P OUTPUT DROP\n"),

@@ -29,6 +29,20 @@ def test_run_handles_missing_binary():
 def test_run_enforces_timeout():
     result = run(["sleep", "5"], timeout=0.3)
     assert result.timed_out
+    assert result.duration < 2
+
+
+def test_run_caps_combined_stdout_and_stderr_during_collection():
+    import sys
+
+    result = run(
+        [sys.executable, "-c", "import sys; sys.stdout.write('a'*1000000); sys.stderr.write('b'*1000000)"],
+        timeout=5,
+        max_bytes=1024,
+    )
+    assert result.truncated
+    assert len(result.stdout.encode()) + len(result.stderr.encode()) <= 1024
+    assert result.returncode != 0
 
 
 def test_result_from_command_classifies_states():
