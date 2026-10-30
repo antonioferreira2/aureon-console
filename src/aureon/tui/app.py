@@ -12,7 +12,8 @@ Navigation and interaction model
 from __future__ import annotations
 
 import asyncio
-import os
+import platform
+import socket
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -66,8 +67,8 @@ class Header3(Static):
         title.append(f"  v{__version__}", style="#6e7681")
         title.append("   Author: António Lourenço Ferreira", style="#6e7681")
         host = Text()
-        host.append(os.uname().nodename, style="bold")
-        host.append(f"  {os.uname().sysname} {os.uname().release}", style="#6e7681")
+        host.append(socket.gethostname(), style="bold")
+        host.append(f"  {platform.system()} {platform.release()}", style="#6e7681")
         health = Text()
         for indicator in indicators_line(self.indicators):
             health.append_text(indicator)

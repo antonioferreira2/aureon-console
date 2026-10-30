@@ -42,7 +42,9 @@ def test_run_caps_combined_stdout_and_stderr_during_collection():
     )
     assert result.truncated
     assert len(result.stdout.encode()) + len(result.stderr.encode()) <= 1024
-    assert result.returncode != 0
+    assert not result.ok
+    classified = Result.from_command(result, "bounded-command", lambda output: output)
+    assert classified.availability == Availability.ERROR
 
 
 def test_result_from_command_classifies_states():

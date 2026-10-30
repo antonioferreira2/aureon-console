@@ -56,7 +56,7 @@ class CommandResult:
 
     @property
     def ok(self) -> bool:
-        return self.returncode == 0 and not self.timed_out
+        return self.returncode == 0 and not self.timed_out and not self.truncated
 
     @property
     def lines(self) -> List[str]:
@@ -184,6 +184,8 @@ class Result:
     def from_command(cls, res: CommandResult, source: str, parser) -> "Result":
         if res.timed_out:
             return cls(None, source, Availability.TIMEOUT, "command timed out")
+        if res.truncated:
+            return cls(None, source, Availability.ERROR, "command output exceeded the collection limit")
         if res.returncode == 127:
             return cls(None, source, Availability.UNAVAILABLE, "command not installed")
         if res.returncode == 126:
