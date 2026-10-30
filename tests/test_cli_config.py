@@ -164,11 +164,56 @@ def test_f2b_plan_does_not_write(config, monkeypatch, tmp_path, capsys):
     assert "Nothing was changed" in out
 
 
-def test_f2b_plan_apply_requires_opt_in(config, monkeypatch, capsys):
+def test_f2b_plan_apply_is_always_refused(config, monkeypatch, capsys, tmp_path):
     monkeypatch.setattr("aureon.cli.load_config", lambda path=None: config)
-    config.allow_fail2ban_writes = False
+    config.allow_fail2ban_writes = True
+    config.state_dir = str(tmp_path / "state")
     assert main(["f2b", "plan", "--apply", "--yes"]) == 1
-    assert "refused" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "read-only" in output.lower()
+    assert not list(tmp_path.rglob("aureon-sshd.local"))
+
+
+def test_firewall_json_command_reports_local_evidence(config, monkeypatch, capsys):
+    monkeypatch.setattr("aureon.cli.load_config", lambda path=None: config)
+    from aureon.collectors.firewall import FirewallCollector, FirewallInfo, FirewallEvidence
+    from aureon.util import Availability, Result
+    info = FirewallInfo(detected=["nftables"], evidence=[FirewallEvidence("nftables", "ruleset", Availability.OK, "table inet filter {}\\n")])
+    monkeypatch.setattr(FirewallCollector, "collect", lambda self: Result.ok_result(info, "test"))
+    assert main(["firewall", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["detected"] == ["nftables"]
+    assert payload["evidence"][0]["output"] == "table inet filter {}\\n"
+
+
+def test_assess_json_preserves_unknown_outcomes(config, monkeypatch, capsys):
+    monkeypatch.setattr("aureon.cli.load_config", lambda path=None: config)
+    assert main(["assess", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["checks"]
+    assert any(check["outcome"] in {"UNKNOWN", "ERROR"} for check in payload["checks"])
+    assert len(payload["checks"]) == len(__import__("aureon.hardening", fromlist=["CHECKS"]).CHECKS)
+    assert payload["id"] == 1
+
+
+def test_assessment_history_compare_and_csv_export(config, monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr("aureon.cli.load_config", lambda path=None: config)
+    assert main(["assess", "--json"]) == 0
+    capsys.readouterr()
+    target = tmp_path / "hardening.csv"
+    assert main(["assess", "--format", "csv", "--output", str(target)]) == 0
+    capsys.readouterr()
+    assert main(["assess-history", "--json"]) == 0
+    history = json.loads(capsys.readouterr().out)
+    assert [item["id"] for item in history] == [2, 1]
+    assert main(["assess-compare", "1", "2", "--json"]) == 0
+    comparison = json.loads(capsys.readouterr().out)
+    assert comparison["score_comparable"] is False
+    import csv
+    with target.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == len(__import__("aureon.hardening", fromlist=["CHECKS"]).CHECKS)
+    assert target.stat().st_mode & 0o077 == 0
 
 
 # --- export ---------------------------------------------------------------

@@ -21,6 +21,7 @@ $EDITOR ~/.config/aureon/config.toml
 | Key | Default | Meaning |
 |---|---|---|
 | `timezone` | `""` | Empty = follow the server (`/etc/timezone`, then `/etc/localtime`). Set e.g. `Europe/Lisbon`. |
+| `language` | `en` | Terminal navigation and assessment labels: `en`, `pt`, `es`, `fr`, `de`, `it`, `nl`; other values fall back to English. |
 | `refresh_seconds` | `3.0` | Auto-refresh interval of the console. |
 | `command_timeout` | `8.0` | Hard timeout for every external command. |
 | `max_log_lines` | `500` | Upper bound for any log query. |
@@ -33,7 +34,7 @@ $EDITOR ~/.config/aureon/config.toml
 | `f2b_enabled` | `true` | Enables the Fail2ban module. |
 | `f2b_jail_filter` | `sshd` | Jail name treated as the SSH jail when auto-detecting. |
 | `allow_service_control` | `false` | **Read-only build:** service control is not implemented; the flag exists so an operator can verify it stays off. |
-| `allow_fail2ban_writes` | `false` | Master switch for the wizard's write mode. |
+| `allow_fail2ban_writes` | `false` | Deprecated compatibility key. AUREON always refuses audited-host writes, regardless of this value. |
 
 The file is created with mode `0600`.
 
@@ -45,12 +46,13 @@ The file is created with mode `0600`.
 | `AUREON_DB` | Full path to the SQLite file (overrides `state_dir`) |
 | `AUREON_CONFIG_DIR` | Config directory |
 | `AUREON_TZ` | Timezone name |
+| `AUREON_LANGUAGE` | UI language (`en`, `pt`, `es`, `fr`, `de`, `it`, `nl`) |
 | `AUREON_REFRESH` | Refresh interval |
 | `AUREON_TIMEOUT` | Command timeout |
 | `AUREON_THEME` | Theme name |
 | `AUREON_RETENTION_DAYS` | Retention window |
 | `AUREON_ALLOW_SERVICE_CONTROL` | Keep `false` |
-| `AUREON_ALLOW_F2B_WRITES` | Enables wizard write mode (also needs `--apply --yes`) |
+| `AUREON_ALLOW_F2B_WRITES` | Deprecated compatibility variable; cannot enable host writes. |
 | `AUREON_SHOW_USERNAME` | Privacy opt-in; defaults to redacting |
 
 ## 4. State directory resolution

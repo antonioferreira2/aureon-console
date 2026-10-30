@@ -1,6 +1,6 @@
 # Architecture
 
-Author: António Lourenço Ferreira · Version 0.1.0
+Author: António Lourenço Ferreira · Version 0.2.0
 
 ## 1. Design goals
 
@@ -40,7 +40,7 @@ Author: António Lourenço Ferreira · Version 0.1.0
 │ logs       │          └─────────────────┘            SQLite (WAL)
 │ docker     │
 │ sensors    │          ┌─────────────────┐
-│ tools      │          │ aureon.periods  │  timezone-aware intervals
+│ tools      │ firewall │ aureon.periods  │  timezone-aware intervals
 └─────┬──────┘          │ aureon.config   │  preferences
       │                 │ aureon.util     │  safe exec, Result envelope
       └─────────────────▼─────────────────┘
@@ -95,12 +95,13 @@ with a non-UTC timezone reports the same "today" the administrator sees in
 ## 6. Persistence
 
 SQLite in WAL mode, schema version tracked with `PRAGMA user_version`, migrations
-applied transactionally at open time. Three tables:
+applied transactionally at open time. Schema v2 contains four tables:
 
 - `security_events` - normalised events with a UNIQUE `dedup_key` and indexes
   on `(occurred_ts)`, `(ip)`, `(jail)`, `(kind, occurred_ts)`.
 - `ingest_sources` - per-file cursors (inode, size, offset, state).
 - `collection_runs` - one row per ingestion, with counts and outcome.
+- `assessments` - bounded local snapshots of hardening assessment payloads and their definition/tool versions.
 
 See `docs/LOGS-AND-RETENTION.md`.
 
@@ -115,13 +116,31 @@ detect.py    status = detect_status(Fail2banClient(), ctx)
 parser.py    fail2ban.log, journalctl (short-iso), auth logs -> SecurityEvent
 ingest.py    cursor-based, rotation-aware, idempotent file ingestion
 stats.py     period statistics with data-coverage reporting
-wizard.py    plan -> diff -> validate -> backup -> apply (all opt-in)
+wizard.py    plan -> diff -> advisory only (no host-side application path)
 ```
 
 The module deliberately keeps *live state* and *stored history* apart; see
 `docs/FAIL2BAN.md`.
 
-## 8. Extension points
+## 8. Firewall and hardening audit
+
+`collectors/firewall.py` invokes a fixed set of read-only queries for UFW,
+nftables, iptables/ip6tables and firewalld. It preserves per-query output and
+availability and makes no claim about external reachability. `assessment_engine.py`
+collects the centrally defined checks in `aureon.hardening` across SSH, accounts,
+filesystem metadata, logging, host controls, Fail2ban, containers, OS markers,
+backups and firewall evidence. Unknown/error applicable checks make scores
+unavailable rather than counted as passes. Informational checks do not
+contribute to the score; the score is not a security certification.
+
+Assessment snapshots live in the local `assessments` SQLite table (schema v2).
+The CLI can list history, compare stable check IDs, and export complete JSON/CSV
+reports. `aureon.i18n` supplies seven UI languages with English fallback;
+evidence and host-provided strings remain untranslated to preserve provenance.
+See `docs/HARDENING.md` and its six translated editions for check behavior and
+limits.
+
+## 9. Extension points
 
 To add a new source:
 
@@ -135,7 +154,7 @@ To add a new event kind: extend the parsers in `fail2ban/parser.py` and handle
 it in the statistics queries. `kind` is a plain string, so no schema migration
 is needed for a new kind.
 
-## 9. Threading model
+## 10. Threading model
 
 Textual runs the UI in an asyncio loop. Collection happens in a worker
 (`run_worker(..., exclusive=True)`) and blocking command execution is pushed to

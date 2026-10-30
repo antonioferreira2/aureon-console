@@ -153,6 +153,65 @@ def test_sensors_parser_classifies_readings():
     assert kinds.get("fan1") == "fan"
 
 
+def test_firewall_collector_uses_only_read_only_query_arguments(config, monkeypatch):
+    from aureon.collectors.firewall import FirewallCollector
+    from aureon.util import CommandResult
+
+    installed = {"ufw": "/usr/sbin/ufw", "nft": "/usr/sbin/nft", "iptables": "/usr/sbin/iptables", "ip6tables": "/usr/sbin/ip6tables", "iptables-save": "/usr/sbin/iptables-save", "ip6tables-save": "/usr/sbin/ip6tables-save", "firewall-cmd": "/usr/bin/firewall-cmd"}
+    monkeypatch.setattr("aureon.collectors.firewall.which", lambda name: installed.get(name))
+    seen = []
+    ctx = CollectionContext(config)
+    def fake_run(argv, timeout=None):
+        seen.append(list(argv))
+        return CommandResult(argv, 0, "sample read-only output\\n", "", 0.01)
+    monkeypatch.setattr(ctx, "run", fake_run)
+
+    result = FirewallCollector(ctx).collect()
+    assert result.available
+    assert set(result.value.detected) == {"ufw", "nftables", "iptables", "firewalld"}
+    assert result.value.evidence
+    expected_queries = {
+        ("/usr/sbin/ufw", "version"),
+        ("/usr/sbin/ufw", "status", "verbose"),
+        ("/usr/sbin/ufw", "status", "numbered"),
+        ("/usr/sbin/ufw", "app", "list"),
+        ("/usr/sbin/nft", "list", "ruleset"),
+        ("/usr/sbin/iptables", "-S"),
+        ("/usr/sbin/ip6tables", "-S"),
+        ("/usr/sbin/iptables-save",),
+        ("/usr/sbin/ip6tables-save",),
+        ("/usr/bin/firewall-cmd", "--state"),
+        ("/usr/bin/firewall-cmd", "--get-default-zone"),
+        ("/usr/bin/firewall-cmd", "--get-active-zones"),
+        ("/usr/bin/firewall-cmd", "--list-all-zones"),
+        ("/usr/bin/firewall-cmd", "--permanent", "--list-all-zones"),
+    }
+    assert {tuple(argv) for argv in seen} == expected_queries
+    assert any("external" in warning.lower() for warning in result.value.warnings)
+
+
+def test_firewall_collector_classifies_permission_denied(config, monkeypatch):
+    from aureon.collectors.firewall import FirewallCollector
+    from aureon.util import CommandResult
+
+    monkeypatch.setattr("aureon.collectors.firewall.which", lambda name: "/usr/sbin/nft" if name == "nft" else None)
+    ctx = CollectionContext(config)
+    monkeypatch.setattr(ctx, "run", lambda argv, timeout=None: CommandResult(argv, 1, "", "Operation not permitted", 0.01))
+    result = FirewallCollector(ctx).collect()
+    assert result.available
+    assert result.value.evidence[0].availability == Availability.DENIED
+    assert "permissions" in result.value.warnings[-1].lower()
+
+
+def test_firewall_collector_reports_missing_tools(config, monkeypatch):
+    from aureon.collectors.firewall import FirewallCollector
+
+    monkeypatch.setattr("aureon.collectors.firewall.which", lambda _name: None)
+    result = FirewallCollector(CollectionContext(config)).collect()
+    assert result.availability == Availability.UNAVAILABLE
+    assert "no supported" in result.error
+
+
 def test_optional_tools_are_detected_without_installation(config):
     result = COLLECTORS["tools"](CollectionContext(config)).collect()
     assert result.available

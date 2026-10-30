@@ -142,11 +142,9 @@ class SecurityService:
         return build_plan(self.status, policy=policy, ignoreip=ignoreip)
 
     def apply(self, plan: WizardPlan, confirmed: bool = False) -> Result:
-        outcome = apply_plan(plan, confirmed=confirmed, allow_writes=self.config.allow_fail2ban_writes)
-        self.refresh_status()
-        if outcome.applied:
-            return Result.ok_result(outcome, "fail2ban configuration")
-        return Result(outcome, "fail2ban configuration", "error", "; ".join(outcome.errors) or "not applied")
+        """Legacy API: applying host configuration is permanently refused."""
+        outcome = apply_plan(plan, confirmed=confirmed, allow_writes=False)
+        return Result(outcome, "fail2ban configuration", "error", "; ".join(outcome.errors))
 
     def plan_diff(self, plan: WizardPlan) -> str:
         return diff_plan(plan)

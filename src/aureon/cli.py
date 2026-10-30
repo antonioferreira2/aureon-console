@@ -1,9 +1,8 @@
 """Command line entry point.
 
 ``aureon`` with no arguments starts the interactive console. Sub-commands exist
-for scripting, remote monitoring and CI; every one of them is read-only except
-the explicitly named ``ingest`` (writes to the local store only) and
-``f2b-plan --apply`` (requires explicit opt-in flags).
+for scripting and CI; every command is read-only with respect to the audited
+host. Ingestion and database maintenance only write AUREON's local state.
 """
 
 from __future__ import annotations
@@ -63,15 +62,30 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--policy", default="balanced", choices=["conservative", "balanced", "strict"])
     plan.add_argument("--ignoreip", action="append", default=[], help="address or CIDR to never ban")
     plan.add_argument("--diff", action="store_true", help="print a unified diff")
-    plan.add_argument(
-        "--apply",
-        action="store_true",
-        help="WRITE MODE: write the drop-in file. Requires AUREON_ALLOW_F2B_WRITES=1 and --yes.",
-    )
-    plan.add_argument("--yes", action="store_true", help="confirm the change (required with --apply)")
+    # Deprecated, compatibility-only arguments. The command always refuses
+    # writes; retained so older scripts fail safely with an explanatory error.
+    plan.add_argument("--apply", action="store_true", help="deprecated: all audited-host writes are refused")
+    plan.add_argument("--yes", action="store_true", help="deprecated: no host changes are supported")
 
     modules = sub.add_parser("modules", help="probe every collector and print availability")
     modules.add_argument("--json", action="store_true")
+
+    firewall = sub.add_parser("firewall", help="inspect local firewall tools and rules (read-only)")
+    firewall.add_argument("--json", action="store_true", help="machine-readable output")
+
+    assess = sub.add_parser("assess", help="run and record evidence-based hardening checks")
+    assess.add_argument("--json", action="store_true", help="machine-readable output")
+    assess.add_argument("--format", choices=("json", "csv"), default="json", help="assessment export format when --output is used")
+    assess.add_argument("--output", type=Path, help="write a complete assessment report to this path")
+
+    history = sub.add_parser("assess-history", help="list locally stored hardening assessments")
+    history.add_argument("--limit", type=int, default=20)
+    history.add_argument("--json", action="store_true")
+
+    compare = sub.add_parser("assess-compare", help="compare two locally stored assessment IDs")
+    compare.add_argument("previous", type=int)
+    compare.add_argument("current", type=int)
+    compare.add_argument("--json", action="store_true")
 
     return parser
 
@@ -108,6 +122,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _cmd_f2b(config, args)
     if command == "modules":
         return _cmd_modules(config, args)
+    if command == "firewall":
+        return _cmd_firewall(config, args)
+    if command == "assess":
+        return _cmd_assess(config, args)
+    if command == "assess-history":
+        return _cmd_assessment_history(config, args)
+    if command == "assess-compare":
+        return _cmd_assessment_compare(config, args)
     parser.print_help()  # pragma: no cover
     return 2  # pragma: no cover
 
@@ -341,22 +363,12 @@ def _cmd_f2b(config: Config, args) -> int:
         print(f"  x {blocker}")
 
     if not args.apply:
-        print("\nNothing was changed. Re-run with --apply --yes to write the drop-in file.")
+        print("\nNothing was changed. AUREON is read-only; apply any reviewed recommendation separately.")
         return 0
 
     result = service.apply(plan, confirmed=args.yes)
-    if result.available:
-        outcome = result.value
-        print(f"applied        : {outcome.applied}")
-        print(f"changed files  : {', '.join(outcome.changed_files) or 'none'}")
-        print(f"backups        : {', '.join(outcome.backups) or 'none'}")
-        print(f"validation     : {outcome.validation}")
-        for note in outcome.notes:
-            print(f"  - {note}")
-        for error in outcome.errors:
-            print(f"  x {error}")
-        return 0 if outcome.applied else 1
-    print(f"error: {result.error}")
+    print(result.error or "refused: AUREON is read-only")
+    print("No files or audited-host services were changed. Review the proposal and apply any change separately.")
     return 1
 
 
@@ -404,6 +416,140 @@ def _cmd_modules(config: Config, args) -> int:
             print(f"{key:<10} {entry.get('state', '?'):<12} {entry.get('source', '')}"
                   f"{'  ' + entry['error'] if entry.get('error') else ''}")
     return 0
+
+
+def _cmd_firewall(config: Config, args) -> int:
+    from .collectors.base import CollectionContext
+    from .collectors.firewall import FirewallCollector
+
+    result = FirewallCollector(CollectionContext(config)).collect()
+    if args.json:
+        payload = {
+            "state": result.availability,
+            "source": result.source,
+            "error": result.error,
+            "detected": result.value.detected if result.available else [],
+            "warnings": result.value.warnings if result.available else [],
+            "evidence": [
+                {
+                    "technology": item.technology,
+                    "query": item.query,
+                    "availability": item.availability,
+                    "output": item.output,
+                    "error": item.error,
+                    "truncated": item.truncated,
+                }
+                for item in result.value.evidence
+            ] if result.available else [],
+        }
+        print(json.dumps(payload, indent=2))
+    elif not result.available:
+        print(f"Firewall inspection unavailable: {result.error or result.availability}")
+        return 1
+    else:
+        print("Firewall tools detected: " + (", ".join(result.value.detected) or "none"))
+        for warning in result.value.warnings:
+            print(f"! {warning}")
+        for item in result.value.evidence:
+            print(f"\n[{item.technology}] {item.query}: {item.availability}")
+            if item.output:
+                print(item.output, end="" if item.output.endswith("\n") else "\n")
+            if item.error:
+                print(f"  error: {item.error}")
+            if item.truncated:
+                print("  output truncated at the configured safety limit")
+    return 0 if result.available else 1
+
+
+def _cmd_assess(config: Config, args) -> int:
+    from .db.repo import Repository
+    from .hardening import run_assessment
+    from .hardening_reports import export_assessment_csv, export_assessment_json
+
+    assessment = run_assessment(_AssessmentContext(config), __version__)
+    payload = assessment.as_dict()
+    repo = Repository(config.db_path)
+    repo.open()
+    assessment_id = repo.save_assessment(payload)
+    repo.close()
+    payload["id"] = assessment_id
+    if args.output:
+        target = (export_assessment_csv(payload, args.output) if args.format == "csv"
+                  else export_assessment_json(payload, args.output))
+        if args.json:
+            print(json.dumps({"assessment_id": payload["id"], "output": str(target)}, indent=2))
+        else:
+            print(f"assessment {payload['id']} exported: {target}")
+        return 0
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return 0
+    print(f"Assessment #{payload['id']}: {assessment.assessed_at} (definition v{assessment.definition_version})")
+    print(f"Hardening score: {assessment.score if assessment.score is not None else 'unavailable'} / 100")
+    print(assessment.scoring_method)
+    for check in assessment.checks:
+        print(f"\n{check.outcome.value}: {check.check.id} — {check.check.title}")
+        if check.reason:
+            print(f"  {check.reason}")
+        for evidence in check.evidence:
+            print(f"  evidence: {evidence}")
+        if check.outcome.value == "FAIL":
+            print(f"  recommendation: {check.check.remediation}")
+            print(f"  verification: {check.check.verification}")
+    return 0
+
+
+def _cmd_assessment_history(config: Config, args) -> int:
+    from .db.repo import Repository
+
+    repo = Repository(config.db_path)
+    repo.open()
+    rows = repo.assessments(args.limit)
+    repo.close()
+    if args.json:
+        print(json.dumps(rows, indent=2))
+    elif not rows:
+        print("No assessments have been stored yet.")
+    else:
+        for row in reversed(rows):
+            score = row["score"] if row["score"] is not None else "unavailable"
+            print(f"#{row['id']} {row['assessed_at']} score={score} definition=v{row['definition_version']}")
+    return 0
+
+
+def _cmd_assessment_compare(config: Config, args) -> int:
+    from .db.repo import Repository
+    from .hardening_reports import compare_assessments
+
+    repo = Repository(config.db_path)
+    repo.open()
+    records = {row["id"]: row for row in repo.assessments(500)}
+    repo.close()
+    if args.previous not in records or args.current not in records:
+        print("Assessment ID not found in local history.", file=sys.stderr)
+        return 2
+    report = compare_assessments(records[args.previous], records[args.current])
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        delta = report["score_delta"]
+        print(f"Assessment {args.previous} -> {args.current}; score delta: {delta if delta is not None else 'not comparable'}")
+        if not report["changed_checks"]:
+            print("No outcome changes in the stored check set.")
+        for item in report["changed_checks"]:
+            print(f"{item['check_id']} {item['previous'] or '—'} -> {item['current'] or '—'} ({item['change']})")
+        print(report["limitations"])
+    return 0
+
+
+class _AssessmentContext:
+    def __init__(self, config: Config) -> None:
+        self.config = config
+
+    def run(self, argv, timeout=None):
+        from .util import run
+
+        return run(argv, timeout=timeout or self.config.command_timeout)
 
 
 if __name__ == "__main__":  # pragma: no cover

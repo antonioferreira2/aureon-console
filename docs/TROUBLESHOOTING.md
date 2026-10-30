@@ -30,7 +30,7 @@ aureon f2b status
 | Jail running but zero events | wrong `logpath`/`backend` | Compare `jail.local` with `journalctl -u sshd -n 20` |
 | Statistics say "no data" | collection has not run | `aureon ingest`, then `aureon ingest --import-history` |
 | Counts lower than expected | retention or coverage | `aureon stats --period year` shows the coverage window |
-| `--apply` refuses | opt-in missing | `AUREON_ALLOW_F2B_WRITES=1` **and** `--apply --yes` |
+| Legacy `f2b plan --apply` refuses | Expected: audited-host remediation is not supported | Review the generated proposal and apply any change separately under your own change control. |
 
 ## Storage and permissions
 

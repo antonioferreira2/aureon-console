@@ -240,6 +240,33 @@ class Repository:
         conn = self.conn
         return [dict(row) for row in conn.execute("SELECT * FROM ingest_sources").fetchall()]
 
+    def save_assessment(self, assessment: Dict[str, object]) -> int:
+        """Persist one assessment snapshot as AUREON-local history."""
+        payload = json.dumps(assessment, sort_keys=True, separators=(",", ":"))
+        cursor = self.conn.execute(
+            "INSERT INTO assessments (assessed_at, tool_version, definition_version, score, payload) VALUES (?, ?, ?, ?, ?)",
+            (str(assessment.get("assessed_at", "")), str(assessment.get("tool_version", "")),
+             str(assessment.get("definition_version", "")), assessment.get("score"), payload),
+        )
+        return int(cursor.lastrowid)
+
+    def assessments(self, limit: int = 100) -> List[Dict[str, object]]:
+        """Return newest stored assessment snapshots (bounded to 500)."""
+        rows = self.conn.execute(
+            "SELECT id, assessed_at, tool_version, definition_version, score, payload FROM assessments ORDER BY id DESC LIMIT ?",
+            (max(1, min(int(limit), 500)),),
+        ).fetchall()
+        output = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError):
+                payload = {}
+            output.append({"id": int(row["id"]), "assessed_at": row["assessed_at"],
+                           "tool_version": row["tool_version"], "definition_version": row["definition_version"],
+                           "score": row["score"], "assessment": payload})
+        return output
+
     # -- reads ----------------------------------------------------------
     def coverage(self) -> Tuple[Optional[datetime], Optional[datetime], int]:
         conn = self.conn

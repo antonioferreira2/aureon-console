@@ -7,7 +7,7 @@ Author: António Lourenço Ferreira
 | Package | License | Why | Verified version during development |
 |---|---|---|---|
 | textual | MIT | TUI framework | 8.2.8 |
-| rich | MIT | Tables, text rendering (transitive via textual) | 13.x |
+| rich | MIT | Tables, text rendering | 14.3.4 |
 
 ## 2. Development dependencies
 
@@ -60,12 +60,16 @@ pip show textual | grep -i requires
 pip-licenses --from=mixed --summary
 ```
 
-## 6. Updating dependencies
+## 6. Vulnerability scanning and updates
+
+Run the advisory check in CI or locally in a development environment:
 
 ```bash
-pip install --upgrade textual
-python -m pytest
+python -m pip install pip-audit
+python -m pip_audit --strict
 ```
 
-AUREON pins only a lower bound (`textual>=0.60`) so distribution packages can
-ship their own tested version.
+AUREON does not install or update packages on audited hosts. Dependency updates
+must be reviewed and tested by the maintainer; preserve the project's supported
+Python range and verify all tests before release. The scanner is a development
+and CI tool, not a runtime dependency.

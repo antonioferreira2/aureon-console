@@ -14,7 +14,9 @@ Nothing is published without an explicit approval from António Lourenço Ferrei
 ## 2. Security
 
 - [ ] read-only default confirmed (`test_refresh_only_ever_issues_read_only_commands`)
-- [ ] wizard still refuses without both flags
+- [ ] Fail2ban apply attempts are always refused, even with legacy opt-ins
+- [ ] firewall audit executes only static read-only queries
+- [ ] UNKNOWN/ERROR applicable assessment checks never increase the score
 - [ ] no listening sockets, no telemetry (tests)
 - [ ] `docs/SECURITY.md` updated with any new capability
 - [ ] dependency advisory review

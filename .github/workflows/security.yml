@@ -19,10 +19,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install pip-audit
-        run: python -m pip install pip-audit
-      - name: Audit
-        run: pip-audit --strict || echo "review advisories above"
+      - name: Install project and pip-audit
+        run: python -m pip install -e . pip-audit
+      - name: Audit installed dependency snapshot
+        run: |
+          python -m pip freeze | grep -vE '^-e |^aureon-console==' > /tmp/aureon-requirements-audit.txt
+          pip-audit --strict --requirement /tmp/aureon-requirements-audit.txt
 
   self-check:
     runs-on: ubuntu-latest

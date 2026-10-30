@@ -10,7 +10,7 @@ from __future__ import annotations
 import sqlite3
 from typing import List, Tuple
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 MIGRATION_0_1 = (
     """
@@ -72,7 +72,21 @@ MIGRATION_0_1 = (
     """,
 )
 
-MIGRATIONS: List[Tuple[int, Tuple[str, ...]]] = [(1, MIGRATION_0_1)]
+MIGRATION_1_2 = (
+    """
+    CREATE TABLE IF NOT EXISTS assessments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        assessed_at TEXT NOT NULL,
+        tool_version TEXT NOT NULL,
+        definition_version TEXT NOT NULL,
+        score INTEGER,
+        payload TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_assessments_assessed_at ON assessments(assessed_at)",
+)
+
+MIGRATIONS: List[Tuple[int, Tuple[str, ...]]] = [(1, MIGRATION_0_1), (2, MIGRATION_1_2)]
 
 
 def connect(path, read_only: bool = False) -> sqlite3.Connection:

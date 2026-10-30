@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aureon-console"
-version = "0.1.0"
+version = "0.2.0"
 description = "AUREON Console - read-only TUI for Linux server monitoring, diagnostics, logs and Fail2ban security insights."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -32,8 +32,8 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "pyyaml>=6.0"]
 aureon = "aureon.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/aureon-console/aureon-console"
-Documentation = "https://github.com/aureon-console/aureon-console/tree/main/docs"
+Homepage = "https://github.com/antonioferreira2/aureon-console"
+Documentation = "https://github.com/antonioferreira2/aureon-console/tree/main/docs"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

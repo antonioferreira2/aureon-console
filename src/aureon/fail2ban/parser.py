@@ -253,15 +253,15 @@ def _clean_ip(value: str) -> str:
 
 def _iso_to_datetime(value: str, tzinfo) -> datetime:
     value = value.strip()
-    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            parsed = datetime.strptime(value, fmt)
-            if parsed.tzinfo is None:
-                return parsed.replace(tzinfo=tzinfo)
-            return parsed.astimezone(tzinfo)
-        except ValueError:
-            continue
-    return datetime.now(tzinfo)  # pragma: no cover - journalctl always emits ISO
+    try:
+        # fromisoformat preserves fractional seconds and accepts both coloned
+        # and compact UTC offsets used by journalctl/rsyslog.
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
+    except ValueError:
+        return datetime.now(tzinfo)  # pragma: no cover - journalctl always emits ISO
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=tzinfo)
+    return parsed.astimezone(tzinfo)
 
 
 def parse_journal_sshd(lines: Iterable[str], tzinfo, source: str = "journal-sshd") -> List[SecurityEvent]:

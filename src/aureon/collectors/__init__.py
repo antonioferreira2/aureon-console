@@ -6,6 +6,7 @@ from typing import Dict, List, Type
 
 from .base import CollectionContext, Collector
 from .docker import DockerCollector
+from .firewall import FirewallCollector
 from .logs import LogCollector
 from .network import NetworkCollector
 from .sensors import SensorCollector
@@ -24,6 +25,7 @@ COLLECTORS: Dict[str, Type[Collector]] = {
     "docker": DockerCollector,
     "sensors": SensorCollector,
     "tools": ToolCollector,
+    "firewall": FirewallCollector,
 }
 
 
@@ -40,6 +42,7 @@ __all__ = [
     "CollectionContext",
     "Collector",
     "DockerCollector",
+    "FirewallCollector",
     "LogCollector",
     "NetworkCollector",
     "SensorCollector",

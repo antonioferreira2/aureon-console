@@ -95,10 +95,10 @@ and which date range they cover.
 aureon f2b status
 aureon f2b plan                     # proposal + steps, nothing written
 aureon f2b plan --policy strict --diff
-aureon f2b plan --apply --yes       # requires AUREON_ALLOW_F2B_WRITES=1
+aureon f2b plan --apply --yes       # legacy args: always refused; no host writes
 ```
 
-The wizard:
+The advisory wizard:
 
 1. detects the distribution and package manager;
 2. reads the SSH port from `sshd_config` (last `Port` directive wins, like
@@ -108,11 +108,10 @@ The wizard:
 5. builds a proposal from a named policy (`conservative`, `balanced`, `strict`)
    or from the existing values;
 6. prints a unified diff against the file it would create;
-7. lists the exact commands with a risk level each;
-8. **stops here** unless `--apply --yes` and `AUREON_ALLOW_F2B_WRITES=1`;
-9. on apply: backs up (dated, `/var/backups/aureon`), writes the single drop-in,
-   runs `fail2ban-client -t`, and only then reloads the service;
-10. prints how to revert (delete the drop-in, restore the backup).
+7. lists review guidance and warnings;
+8. stops here in every mode. Legacy `--apply`, `--yes`, and `AUREON_ALLOW_F2B_WRITES` are ignored for authorization and always return a refusal;
+9. never writes a drop-in, backup, or other host file, and never validates by applying configuration or reloads the service;
+10. administrators independently review and apply any desired changes.
 
 Policies are policy choices, not universal truths - the help text states what
 each one trades off. The wizard never adds whole networks or `0.0.0.0/0` to

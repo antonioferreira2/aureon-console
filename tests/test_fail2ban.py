@@ -168,25 +168,19 @@ def test_diff_is_shown_for_a_new_dropin(tmp_path):
     assert "+enabled" in diff
 
 
-def test_apply_requires_confirmation(tmp_path):
+@pytest.mark.parametrize("confirmed,allow_writes", [(False, False), (True, False), (False, True), (True, True)])
+def test_apply_is_permanently_refused_and_never_writes(tmp_path, confirmed, allow_writes):
     from aureon.fail2ban.wizard import apply_plan
 
-    status = Fail2banStatus(installed=True, config_dir=str(tmp_path))
+    config_dir = tmp_path / "fail2ban"
+    config_dir.mkdir()
+    status = Fail2banStatus(installed=True, config_dir=str(config_dir))
     plan = build_plan(status)
-    result = apply_plan(plan, confirmed=False, allow_writes=True)
+    result = apply_plan(plan, confirmed=confirmed, allow_writes=allow_writes)
     assert result.applied is False
-    assert any("confirmation" in error for error in result.errors)
-
-
-def test_apply_requires_opt_in_flag(tmp_path):
-    from aureon.fail2ban.wizard import apply_plan
-
-    status = Fail2banStatus(installed=True, config_dir=str(tmp_path))
-    plan = build_plan(status)
-    result = apply_plan(plan, confirmed=True, allow_writes=False)
-    assert result.applied is False
-    assert any("writes are disabled" in error for error in result.errors)
+    assert any("read-only" in error for error in result.errors)
     assert not list(tmp_path.rglob("aureon-sshd.local"))
+    assert not list(tmp_path.rglob("*.bak"))
 
 
 def test_apply_refuses_when_blocked(tmp_path):
@@ -196,7 +190,7 @@ def test_apply_refuses_when_blocked(tmp_path):
     plan = build_plan(status)
     result = apply_plan(plan, confirmed=True, allow_writes=True)
     assert result.applied is False
-    assert result.errors
+    assert any("read-only" in error for error in result.errors)
 
 
 def test_policies_differ():

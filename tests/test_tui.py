@@ -62,7 +62,7 @@ async def test_refresh_only_ever_issues_read_only_commands(config, monkeypatch):
     app = build_app(config)
     async with app.run_test() as pilot:
         await pilot.pause()
-        for panel in ("dashboard", "storage", "network", "services", "logs", "security", "sensors"):
+        for panel in ("dashboard", "storage", "network", "services", "logs", "security", "banned", "firewall", "assessment", "assessment-history", "wizard", "containers", "sensors", "tools"):
             app.current = panel
             app.run_worker(app._collect_and_render(), exclusive=True)
             await pilot.pause()

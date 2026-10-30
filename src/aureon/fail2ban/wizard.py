@@ -1,16 +1,8 @@
 """Assisted Fail2ban configuration wizard.
 
-The wizard is **advisory by default**. It never edits files, never restarts a
-service and never touches sshd_config or the firewall unless *all* of these are
-true:
-
-  1. ``AUREON_ALLOW_F2B_WRITES=1`` (or ``allow_fail2ban_writes = true``)
-  2. the caller passes ``confirmed=True``
-  3. the proposed file validates with ``fail2ban-client -t``
-
-Writes are restricted to a dedicated, distribution-appropriate drop-in file
-(``jail.d/aureon-sshd.local``) so existing configuration is preserved and the
-change is trivially reversible by removing one file.
+The wizard is advisory only. It can render a proposal and unified diff, but
+AUREON never writes Fail2ban configuration, validates changes by invoking a
+write-capable operation, or reloads/restarts the audited service.
 """
 
 from __future__ import annotations
@@ -22,8 +14,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-
-import shutil
 
 from ..util import Result, which
 from .detect import Fail2banStatus, JailInfo
@@ -157,9 +147,9 @@ def detect_admin_ip() -> Tuple[Optional[str], str]:
     env_client = os.environ.get("SSH_CLIENT") or os.environ.get("SSH_CONNECTION")
     if env_client:
         return env_client.split()[0], "SSH_CLIENT environment variable"
-    return None, (
-        "could not determine the originating client address (SSH_CLIENT not set); "
-        "verify manually before applying"
+    return None, (            "could not determine the originating client address (SSH_CLIENT not set); "
+            "review the address manually before changing any configuration"
+
     )
 
 
@@ -291,49 +281,38 @@ def build_plan(
     if status.ssh_jail and status.ssh_jail.port and " " in status.ssh_jail.port and not ssh_port:
         warnings.append(f"the jail listens on several ports ({status.ssh_jail.port}); they are preserved as-is")
     if not status.ssh_jail and port == "22":
-        warnings.append("no SSH jail exists yet: confirm the SSH port before applying (the proposal assumes 22)")
+        warnings.append("no SSH jail exists yet: the advisory proposal assumes port 22; verify the actual SSH port manually")
     if policy not in POLICY_PRESETS:
         warnings.append(f"unknown policy {policy!r}; falling back to 'balanced'")
     if not status.installed:
-        blockers.append("Fail2ban is not installed: install it first (no change is performed automatically).")
+        blockers.append("Fail2ban is not installed: the proposal is informational and does not install packages.")
     if status.service_state == "failed":
-        warnings.append("fail2ban.service is currently failed; investigate before applying changes.")
+        warnings.append("fail2ban.service is currently failed; investigate the service separately.")
     if port_source.startswith("default"):
         warnings.append("No explicit Port directive found in sshd_config: assuming 22. Verify the real port.")
 
     steps = [
         PlanStep(
-            description=f"Write drop-in {dropin_path}",
-            command=f"install -m 0644 <generated> {dropin_path}",
+            description=f"Review proposed drop-in {dropin_path}; AUREON will not apply it",
+            command="",
             risk="low",
         ),
         PlanStep(
             description="Validate configuration",
-            command="fail2ban-client -t",
+            command="",
             risk="low",
         ),
         PlanStep(
-            description="Reload Fail2ban (applies new jail without dropping existing bans)",
-            command="systemctl reload fail2ban  # or: fail2ban-client reload",
+            description="If an administrator applies a change, review the service impact and reload procedure independently",
+            command="",
             risk="medium",
         ),
         PlanStep(
-            description="Verify final state",
-            command="fail2ban-client status sshd",
+            description="If changes are applied separately, verify the resulting state using your change procedure",
+            command="",
             risk="low",
         ),
     ]
-    if not status.installed and binary:
-        steps.insert(
-            0,
-            PlanStep(
-                description=f"Install Fail2ban via {manager}",
-                command=f"{binary} install fail2ban",
-                reversible=False,
-                risk="high",
-            ),
-        )
-
     return WizardPlan(
         generated_at=now,
         distro=detect_distro(),
@@ -407,106 +386,17 @@ def diff_plan(plan: WizardPlan) -> str:
 
 
 # ---------------------------------------------------------------------------
-# application (opt-in, validated, backed up)
+# Read-only compatibility shim
 # ---------------------------------------------------------------------------
 def apply_plan(plan: WizardPlan, confirmed: bool = False, allow_writes: bool = False) -> ApplyResult:
-    result = ApplyResult(applied=False)
-    if not confirmed:
-        result.errors.append("refused: no explicit confirmation was provided")
-        return result
-    if not allow_writes:
-        result.errors.append(
-            "refused: writes are disabled. Set allow_fail2ban_writes = true in the AUREON config "
-            "or AUREON_ALLOW_F2B_WRITES=1, then re-run."
-        )
-        return result
-    if not plan.safe_to_apply:
-        result.errors.append("refused: the plan has unresolved blockers")
-        result.errors.extend(plan.blockers)
-        return result
+    """Refuse every attempt to apply a proposal, including legacy opt-ins.
 
-    target = Path(plan.dropin_path)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_dir = Path("/var/backups/aureon")
-    try:
-        backup_dir.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        result.errors.append(f"cannot create backup directory: {exc}")
-        return result
-
-    if target.exists():
-        backup = backup_dir / f"{target.name}.{stamp}.bak"
-        try:
-            shutil.copy2(target, backup)
-            os.chmod(backup, 0o600)
-            result.backups.append(str(backup))
-        except OSError as exc:
-            result.errors.append(f"cannot back up {target}: {exc}")
-            return result
-
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(plan.content, encoding="utf-8")
-        os.chmod(target, 0o644)
-        result.changed_files.append(str(target))
-    except OSError as exc:
-        result.errors.append(f"cannot write {target}: {exc}")
-        return result
-
-    validation = validate_config()
-    result.validation = validation.value or "" if validation.available else (validation.error or "not run")
-    if not validation.available or (validation.value or "").strip() != "OK":
-        result.errors.append(f"configuration validation failed: {result.validation}")
-        result.notes.append(f"restore with: cp {result.backups[-1] if result.backups else '(no backup)'} {target}")
-        return result
-
-    reload_result = reload_service()
-    if not reload_result.available:
-        result.notes.append(f"service reload not performed: {reload_result.error}")
-    result.applied = True
-    result.notes.append("verify with: fail2ban-client status sshd")
-    return result
-
-
-def validate_config() -> Result:
-    binary = which("fail2ban-client")
-    if not binary:
-        return Result.unavailable("fail2ban-client", "fail2ban-client not installed")
-    from ..util import run
-
-    res = run([binary, "-t"], timeout=25.0)
-    if res.ok:
-        text = res.stdout.strip() or "OK"
-        return Result.ok_result(text.splitlines()[-1][:120], "fail2ban-client -t")
-    return Result(None, "fail2ban-client -t", "error", (res.stderr or "validation failed").strip()[:200])
-
-
-def reload_service() -> Result:
-    systemctl = which("systemctl")
-    if not systemctl:
-        return Result.unavailable("systemctl", "systemctl not available")
-    from ..util import run
-
-    res = run([systemctl, "reload", "fail2ban"], timeout=20.0)
-    if res.ok:
-        return Result.ok_result("reloaded", "systemctl reload fail2ban")
-    return Result(None, "systemctl reload fail2ban", "error", (res.stderr or res.stdout).strip()[:200])
-
-
-def rollback(plan: WizardPlan, result: ApplyResult) -> ApplyResult:
-    """Restore the file captured before the change."""
-    out = ApplyResult(applied=False)
-    if not result.backups:
-        out.errors.append("no backup recorded for this change")
-        return out
-    backup = Path(result.backups[-1])
-    if not backup.exists():
-        out.errors.append(f"backup missing: {backup}")
-        return out
-    try:
-        shutil.copy2(backup, Path(plan.dropin_path))
-        out.applied = True
-        out.notes.append(f"restored {plan.dropin_path} from {backup}")
-    except OSError as exc:
-        out.errors.append(str(exc))
-    return out
+    Parameters remain accepted for compatibility with existing CLI/config
+    callers, but intentionally have no effect. Only the local plan and diff may
+    be generated; administrators must review and apply any change separately.
+    """
+    del plan, confirmed, allow_writes
+    return ApplyResult(
+        applied=False,
+        errors=["refused: AUREON is read-only; review the proposal and apply any changes separately"],
+    )

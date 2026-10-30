@@ -132,14 +132,56 @@ def test_no_telemetry_endpoints_in_the_codebase():
     assert offenders == [], f"unexpected outbound network usage: {offenders}"
 
 
-def test_wizard_never_writes_without_opt_in(tmp_path):
-    status = Fail2banStatus(installed=True, config_dir=str(tmp_path))
-    plan = build_plan(status)
+def test_hardening_checks_keep_missing_evidence_unknown():
+    from aureon.hardening import Outcome, assess_ssh_root_login, assess_firewall, calculate_score, _result
+    from aureon.collectors.firewall import FirewallInfo
+
+    assert assess_ssh_root_login(None).outcome == Outcome.UNKNOWN
+    firewall_checks = assess_firewall(FirewallInfo(detected=["nftables"]))
+    assert firewall_checks[1].outcome == Outcome.UNKNOWN
+    score, domains = calculate_score(firewall_checks)
+    assert score is None
+    assert domains["Firewall"] is None
+
+
+def test_hardening_ssh_check_uses_observed_effective_value():
+    from aureon.hardening import Outcome, assess_ssh_root_login
+
+    failed = assess_ssh_root_login("yes")
+    password_only = assess_ssh_root_login("no")
+    key_only = assess_ssh_root_login("prohibit-password")
+    assert failed.outcome == Outcome.FAIL
+    assert failed.evidence == ["sshd -T reported permitrootlogin yes"]
+    assert password_only.outcome == Outcome.PASS
+    assert key_only.outcome == Outcome.FAIL
+
+
+def test_hardening_score_excludes_unknown_and_informational_checks():
+    from aureon.hardening import Outcome, assess_ssh_root_login, calculate_score, _result
+
+    failed = assess_ssh_root_login("yes")
+    unknown = assess_ssh_root_login(None)
+    info = _result("FIREWALL-TOOL-AVAILABLE", Outcome.PASS, ["nft"])
+    score, _domains = calculate_score([failed, unknown, info])
+    assert score is None, "unknown applicable controls make the score incomplete, not higher-confidence"
+
+
+def test_fail2ban_apply_has_no_write_path(tmp_path, monkeypatch):
     from aureon.fail2ban.wizard import apply_plan
 
-    result = apply_plan(plan, confirmed=True, allow_writes=False)
+    config_dir = tmp_path / "fail2ban"
+    config_dir.mkdir()
+    plan = build_plan(Fail2banStatus(installed=True, config_dir=str(config_dir)))
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("host mutation/validation command must not be reached")
+    monkeypatch.setattr("aureon.fail2ban.wizard.validate_config", unexpected, raising=False)
+    monkeypatch.setattr("aureon.fail2ban.wizard.reload_service", unexpected, raising=False)
+
+    result = apply_plan(plan, confirmed=True, allow_writes=True)
     assert result.applied is False
-    assert not (tmp_path / "jail.d").exists()
+    assert "read-only" in result.errors[0]
+    assert list(config_dir.iterdir()) == []
+    assert not (tmp_path / "backups").exists()
 
 
 def test_plan_targets_a_dedicated_dropin(tmp_path):

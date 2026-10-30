@@ -98,8 +98,6 @@ Guarantees:
   database and backups remain and are reported in the output.
 - **Other services' dependencies are untouched.** AUREON installs nothing
   outside its own virtualenv, so there is nothing to unwind.
-- After removing a drop-in written by the wizard (`jail.d/aureon-sshd.local`),
-  run `fail2ban-client -t && systemctl reload fail2ban`.
 
 ## 8. Recovery
 

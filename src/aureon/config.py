@@ -63,6 +63,7 @@ class Config:
 
     # Behaviour
     timezone: str = ""            # empty = follow server /etc/timezone
+    language: str = "en"          # en, pt, es, fr, de, it, nl
     refresh_seconds: float = 3.0
     command_timeout: float = DEFAULT_TIMEOUT
     max_log_lines: int = 500
@@ -79,7 +80,7 @@ class Config:
     f2b_enabled: bool = True
     f2b_jail_filter: str = "sshd"
 
-    # Service control is disabled by default: AUREON is a monitoring tool.
+    # Deprecated compatibility flags: operational writes are never allowed.
     allow_service_control: bool = False
     allow_fail2ban_writes: bool = False
 
@@ -186,6 +187,7 @@ def load_config(path: Optional[Path] = None) -> Config:
         "AUREON_STATE_DIR": "state_dir",
         "AUREON_CONFIG_DIR": "config_dir",
         "AUREON_TZ": "timezone",
+        "AUREON_LANGUAGE": "language",
         "AUREON_REFRESH": "refresh_seconds",
         "AUREON_TIMEOUT": "command_timeout",
         "AUREON_THEME": "theme",

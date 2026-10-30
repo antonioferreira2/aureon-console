@@ -20,8 +20,10 @@ scanner, and performs no network scanning of any kind.
 
 ### 2.1 Read-only by default
 
-- No code path restarts a service, edits `sshd_config`, touches iptables/nftables,
-  kills a process, or writes to `/etc` by default.
+- AUREON never changes firewall rules, Fail2ban jails, SSH settings, accounts, packages, services or kernel state. Its only writes are to its explicitly scoped local configuration, history store, backups and exports.
+- The legacy Fail2ban `--apply`/`--yes` CLI flags and write-enable setting are retained only for compatibility and are always refused; no operation can write an audited host configuration file or reload a host service.
+- Firewall inspection is a fixed allowlist of query commands only. Hardening assessment checks use fixed query vectors and bounded read-only filesystem metadata; missing, incomplete, or complex evidence remains UNKNOWN/ERROR rather than a pass. No package metadata refresh, package manager, firewall change, service control, or container mutation is performed by assessment. Local evidence does not prove external exposure or compliance.
+- Assessment history is written only to AUREON's own SQLite database; requested report exports are private (`0600` where supported). Sensitive file contents are not read during permission checks.
 - The TUI test `test_refresh_only_ever_issues_read_only_commands` asserts that no
   mutating token (`start`, `stop`, `restart`, `reload`, `set`, `unban`, `ban`,
   `kill`, `rm`, `mv`, `install`) ever reaches an external command.
@@ -36,20 +38,11 @@ scanner, and performs no network scanning of any kind.
 - Inputs that reach command arguments are validated first: SMART device names,
   container names, Fail2ban jail names, `systemctl` units.
 
-### 2.3 Write mode (opt-in, validated, reversible)
+### 2.3 No remediation mode
 
-The Fail2ban wizard requires **all** of:
-
-1. `allow_fail2ban_writes = true` / `AUREON_ALLOW_F2B_WRITES=1`;
-2. `--apply` and `--yes`;
-3. no unresolved blockers;
-4. `fail2ban-client -t` reporting `OK` *after* writing;
-5. a dated backup of the file it replaces, in `/var/backups/aureon`.
-
-It writes a single new file, `jail.d/aureon-sshd.local`. It never edits
-`jail.conf` or `jail.local`, never removes an existing jail, never restarts
-`sshd`, and never changes the firewall. Deleting that one file reverts the
-change (`systemctl reload fail2ban` afterwards).
+AUREON has no host remediation or write-capable helper. `f2b plan` renders
+suggestions and a diff only. Legacy write-related config/environment flags and
+CLI arguments cannot enable writes and are documented as deprecated.
 
 ### 2.4 Lockout avoidance
 
@@ -57,8 +50,7 @@ change (`systemctl reload fail2ban` afterwards).
 - The operator's own address is **detected but never added automatically**.
 - Broad `ignoreip` entries are flagged with an explicit warning; `0.0.0.0/0` is
   refused by the rendering path.
-- When the client address cannot be determined, the wizard says so instead of
-  guessing.
+- When the client address cannot be determined, the advisory says so instead of guessing.
 
 ### 2.5 Data at rest
 

@@ -32,24 +32,16 @@ from ..models import Health, Indicator
 from ..periods import BUILTIN_PERIODS, PERIOD_TODAY, resolve_timezone, timezone_name
 from ..security import SecurityService
 from ..util import Result
+from ..i18n import navigation, tr
 from . import panels
 from .widgets import AUREON_CSS, HEALTH_STYLE, THEME
 
-NAV = [
-    ("dashboard", "Dashboard"),
-    ("processes", "Processes"),
-    ("storage", "Storage"),
-    ("network", "Network"),
-    ("services", "Services"),
-    ("logs", "Logs"),
-    ("security", "Security (F2B)"),
-    ("banned", "Banned IPs"),
-    ("wizard", "F2B config"),
-    ("containers", "Containers"),
-    ("sensors", "Sensors"),
-    ("tools", "Tools"),
-    ("help", "Help"),
-]
+NAV = navigation()
+
+
+def _ui(key: str, language: str) -> str:
+    value = tr(key, language)
+    return value if value != key else key.rsplit(".", 1)[-1].replace("_", " ").capitalize()
 
 
 class Header3(Static):
@@ -83,7 +75,7 @@ class Header3(Static):
         if not self.indicators:
             health.append("collecting...", style="#6e7681")
         modules = Text()
-        for key, label in NAV:
+        for key, label in navigation(self.config.language):
             state = self.module_states.get(key, "")
             symbol = {
                 "ok": "\u25cf",
@@ -155,7 +147,7 @@ class AureonApp(App):
     def compose(self) -> ComposeResult:
         self.header = Header3(self.config, id="aureon-header")
         yield self.header
-        nav_items = [ListItem(Label(label), id=f"nav-{key}") for key, label in NAV]
+        nav_items = [ListItem(Label(label), id=f"nav-{key}") for key, label in navigation(self.config.language)]
         yield ListView(*nav_items, id="aureon-nav")
         with Vertical(id="aureon-main"):
             yield Static("", id="aureon-title")
@@ -235,7 +227,7 @@ class AureonApp(App):
             self.header.set_data(self._indicator_cache, self._states)
         self._set_status(
             f"updated {datetime.now(self.tz):%H:%M:%S}  |  refresh {self.config.refresh_seconds:g}s  |  "
-            f"timezone {timezone_name(self.tz)}  |  read-only"
+            f"timezone {timezone_name(self.tz)}  |  {tr('status.readonly', self.config.language)}"
         )
 
     def _indicators(self, states: Optional[Dict[str, str]] = None) -> List[Indicator]:
@@ -263,7 +255,7 @@ class AureonApp(App):
         return items
 
     def _nav_label(self, key: str):
-        for nav_key, label in NAV:
+        for nav_key, label in navigation(self.config.language):
             if nav_key == key:
                 return nav_key, label
         return key, key
@@ -279,36 +271,51 @@ class AureonApp(App):
         if key in ("dashboard", "processes"):
             result = COLLECTORS["system"](ctx).collect()
             if key == "dashboard":
-                return panels.panel(result, panels.render_system)
-            return panels.panel(result, panels.render_processes, redact=self.config.redact_usernames)
+                return panels.panel(result, panels.render_system, language=self.config.language)
+            return panels.panel(result, panels.render_processes, language=self.config.language, redact=self.config.redact_usernames)
         if key == "storage":
-            return panels.panel(COLLECTORS["storage"](ctx).collect(), panels.render_storage)
+            return panels.panel(COLLECTORS["storage"](ctx).collect(), panels.render_storage, language=self.config.language)
         if key == "network":
-            return panels.panel(COLLECTORS["network"](ctx).collect(), panels.render_network)
+            return panels.panel(COLLECTORS["network"](ctx).collect(), panels.render_network, language=self.config.language)
         if key == "services":
-            return panels.panel(COLLECTORS["services"](ctx).collect(), panels.render_services)
+            return panels.panel(COLLECTORS["services"](ctx).collect(), panels.render_services, language=self.config.language)
         if key == "logs":
             collector = COLLECTORS["logs"](ctx)
             return panels.panel(
                 collector.collect(unit=self._log_unit or None, priority=self._log_priority or None,
                                   since_minutes=self._log_since, search=self._log_search or None),
                 panels.render_logs,
+                language=self.config.language,
             )
         if key == "security":
             overview = self.security.overview()
-            return panels.render_security_periods(overview.periods, overview.coverage_text)
+            return panels.render_security_periods(overview.periods, overview.coverage_text, self.config.language)
         if key == "banned":
             overview = self.security.overview()
             rows = self.security.repo.banned_ips_in_period(overview.periods["week"].start, overview.periods["week"].end)
-            return panels.render_banned_ips(rows, overview.status.banned_ips)
+            return panels.render_banned_ips(rows, overview.status.banned_ips, language=self.config.language)
+        if key == "firewall":
+            return panels.panel(COLLECTORS["firewall"](ctx).collect(), panels.render_firewall, language=self.config.language)
+        if key == "assessment":
+            from ..hardening import run_assessment
+
+            return panels.render_assessment(run_assessment(_AppAssessmentContext(self.config), __version__), self.config.language)
+        if key == "assessment-history":
+            from ..db.repo import Repository
+
+            repo = Repository(self.config.db_path)
+            repo.open()
+            history = repo.assessments(20)
+            repo.close()
+            return panels.render_assessment_history(history, self.config.language)
         if key == "wizard":
             return self._wizard_panel()
         if key == "containers":
-            return panels.panel(COLLECTORS["docker"](ctx).collect(), panels.render_docker)
+            return panels.panel(COLLECTORS["docker"](ctx).collect(), panels.render_docker, language=self.config.language)
         if key == "sensors":
-            return panels.panel(COLLECTORS["sensors"](ctx).collect(), panels.render_sensors)
+            return panels.panel(COLLECTORS["sensors"](ctx).collect(), panels.render_sensors, language=self.config.language)
         if key == "tools":
-            return panels.panel(COLLECTORS["tools"](ctx).collect(), panels.render_tools)
+            return panels.panel(COLLECTORS["tools"](ctx).collect(), panels.render_tools, language=self.config.language)
         return self._help_panel()
 
     def _wizard_panel(self) -> Static:
@@ -318,13 +325,14 @@ class AureonApp(App):
 
         status = self.security.status
         plan = self.security.plan()
+        language = self.config.language
         text = Text()
-        text.append("AUREON Fail2ban configuration wizard\n\n", style="bold #e6edf3")
-        text.append("Current state\n", style="bold")
+        text.append(_ui("ui.wizard_title", language) + "\n\n", style="bold #e6edf3")
+        text.append(_ui("ui.current_state", language) + "\n", style="bold")
         text.append(f"  installed     : {status.installed} {status.version}\n")
         text.append(f"  service       : {status.service_state}\n")
         text.append(f"  ssh jail      : {status.ssh_jail.name if status.ssh_jail else 'none'}\n\n")
-        text.append("Proposal (nothing is written from the console)\n", style="bold")
+        text.append(_ui("ui.proposal_readonly", language) + "\n", style="bold")
         text.append(f"  distribution  : {plan.distro}\n")
         text.append(f"  package mgr   : {plan.package_manager}\n")
         text.append(f"  ssh port      : {plan.ssh_port} ({plan.ssh_port_source})\n")
@@ -332,9 +340,9 @@ class AureonApp(App):
         text.append(f"  policy        : {plan.policy} - {POLICY_NOTES.get(plan.policy, '')}\n")
         text.append(f"  values        : {plan.values}\n")
         text.append(f"  drop-in file  : {plan.dropin_path}\n\n")
-        text.append("Proposed file content\n", style="bold")
+        text.append(_ui("ui.proposed_file_content", language) + "\n", style="bold")
         text.append(plan.content)
-        text.append("\nSteps (execute manually or via `aureon f2b plan --apply --yes`)\n", style="bold")
+        text.append("\n" + _ui("ui.reviewable_steps", language) + "\n", style="bold")
         for index, step in enumerate(plan.steps, start=1):
             text.append(f"  {index}. {step.description} [{step.risk} risk]\n")
             if step.command:
@@ -346,25 +354,26 @@ class AureonApp(App):
         return Static(Group(text))
 
     def _help_panel(self) -> Static:
+        language = self.config.language
         text = Text()
         text.append(f"{APP_NAME} {__version__}\n", style="bold #e6edf3")
-        text.append("Read-only console for Linux servers over SSH.\n\n")
-        text.append("Keys\n", style="bold")
-        text.append("  Up/Down        navigate modules\n")
-        text.append("  1-9            jump to a module\n")
-        text.append("  F5             force a refresh\n")
-        text.append("  ?              this help\n")
-        text.append("  q              quit (nothing on the server is modified)\n\n")
-        text.append("What is read\n", style="bold")
-        text.append("  /proc (cpu, memory, network, disks, uptime)\n")
-        text.append("  /sys/block (device inventory)\n")
-        text.append("  systemctl (read-only queries)\n")
-        text.append("  journalctl (bounded queries)\n")
-        text.append("  fail2ban-client (read-only queries; root for the live list)\n")
-        text.append("  sensors / smartctl / docker, only if already installed\n\n")
-        text.append("What is never done\n", style="bold")
-        text.append("  No service restarts, no firewall changes, no SSH changes,\n")
-        text.append("  no process kills, no silent writes, no telemetry.\n\n")
+        text.append(_ui("ui.help_intro", language) + "\n\n")
+        text.append(_ui("ui.keys", language) + "\n", style="bold")
+        text.append("  Up/Down        " + _ui("ui.navigate_modules", language) + "\n")
+        text.append("  1-9            " + _ui("ui.jump_module", language) + "\n")
+        text.append("  F5             " + _ui("ui.force_refresh", language) + "\n")
+        text.append("  ?              " + _ui("ui.this_help", language) + "\n")
+        text.append("  q              " + _ui("ui.quit_readonly", language) + "\n\n")
+        text.append(_ui("ui.what_is_read", language) + "\n", style="bold")
+        text.append("  /proc (CPU, memory, network, disks, uptime)\n")
+        text.append("  /sys/block (" + _ui("ui.device_inventory", language) + ")\n")
+        text.append("  systemctl (" + _ui("ui.readonly_queries", language) + ")\n")
+        text.append("  journalctl (" + _ui("ui.bounded_queries", language) + ")\n")
+        text.append("  fail2ban-client (" + _ui("ui.readonly_queries", language) + "; " + _ui("ui.root_for_live_list", language) + ")\n")
+        text.append("  sensors / smartctl / docker (" + _ui("ui.only_if_installed", language) + ")\n\n")
+        text.append(_ui("ui.what_is_never_done", language) + "\n", style="bold")
+        text.append("  " + _ui("ui.no_operational_changes", language) + "\n")
+        text.append("  " + _ui("ui.no_process_kills_writes_telemetry", language) + "\n\n")
         text.append("Documentation: docs/SECURITY.md, docs/FAIL2BAN.md, docs/DATA-ACCURACY.md\n",
                     style="#6e7681")
         return Static(text)
@@ -383,8 +392,8 @@ class AureonApp(App):
     def on_key(self, event) -> None:
         if event.key and event.key.isdigit() and event.key != "0":
             index = int(event.key) - 1
-            if index < len(NAV):
-                self.current = NAV[index][0]
+            if index < len(navigation(self.config.language)):
+                self.current = navigation(self.config.language)[index][0]
                 self.run_worker(self._collect_and_render(), exclusive=True)
 
     def action_refresh(self) -> None:
@@ -397,6 +406,16 @@ class AureonApp(App):
     def action_back(self) -> None:
         self.current = "dashboard"
         self.run_worker(self._collect_and_render(), exclusive=True)
+
+
+class _AppAssessmentContext:
+    def __init__(self, config: Config) -> None:
+        self.config = config
+
+    def run(self, argv, timeout=None):
+        from ..util import run
+
+        return run(argv, timeout=timeout or self.config.command_timeout)
 
 
 def run(config: Config) -> None:  # pragma: no cover - interactive
