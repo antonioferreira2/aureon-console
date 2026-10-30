@@ -29,6 +29,24 @@ Author: **António Lourenço Ferreira** · License: **MIT** · Version: **0.2.0*
 | Sensors | Temperatures, fans, NVIDIA GPU telemetry (only what really exists) |
 | Tools | Inventory of optional third-party tools, licenses, and how AUREON uses them |
 
+## Supported operating systems
+
+AUREON runs **on Linux servers only**. Its collectors read Linux `/proc` and
+`/sys` interfaces; Windows, macOS and BSD are not supported as the machine
+being audited. You can still use a Windows/macOS SSH terminal to connect to a
+supported Linux server and run AUREON there.
+
+| Operating system / distribution | Compatibility |
+|---|---|
+| Ubuntu 22.04 LTS and 24.04 LTS | CI test targets (Python 3.9, 3.11 and 3.12) |
+| Debian, RHEL-compatible (RHEL/Rocky/AlmaLinux), Fedora, Arch, openSUSE and Alpine Linux | Expected to work with Python 3.9+ and readable `/proc` and `/sys`; these distributions are not individually covered by the CI matrix |
+| Windows, macOS, FreeBSD and other non-Linux systems | Not supported for running the application |
+| Linux containers | Partial support only when required host interfaces and files are visible; unavailable collectors are reported rather than inferred |
+
+Compatibility does not mean every module is available on every Linux host:
+service managers, logs, firewall utilities, Fail2ban and optional tools vary by
+distribution and installation. See [the detailed compatibility notes](docs/COMPATIBILITY.md).
+
 ## Requirements
 
 - Linux, Python **3.9+**, a terminal over SSH (80x24 works; wider is better).

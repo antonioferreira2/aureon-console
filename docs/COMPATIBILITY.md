@@ -2,14 +2,17 @@
 
 Author: António Lourenço Ferreira
 
-## Tested during development (0.1.0)
+## Verified environments
 
-| Environment | Result |
+| Environment | Evidence and limits |
 |---|---|
-| Ubuntu 24.04 LTS, Python 3.12, systemd, journald | Fully exercised by the development test-suite and manual runs |
-| Any Linux with Python 3.9+ | Expected to work; see the degradation rules below |
+| Ubuntu 22.04 LTS and 24.04 LTS, Python 3.9, 3.11 and 3.12 | Automated test matrix in GitHub Actions; check the current workflow run for the exact commit |
+| Other Linux distributions with Python 3.9+ | Expected to work based on Linux `/proc` and `/sys` interfaces and available-command detection; not individually covered by CI |
+| Windows, macOS and BSD as the audited host | Not supported; required Linux kernel interfaces and collectors are absent |
 
-CI additionally runs the suite on Ubuntu 22.04 and 24.04 with Python 3.9-3.12.
+The automated OS matrix does not imply that every optional collector is available
+on each distribution. Collection degrades by reporting unavailable evidence
+when commands, permissions, init systems or files are missing.
 
 ## Distributions
 
@@ -57,8 +60,8 @@ Colour is never the only signal: every status also carries a symbol
 
 ## Python
 
-3.9 or newer (3.9/3.10/3.11/3.12 exercised). Standard library only outside of
-`textual` and `rich`.
+3.9 or newer (the CI matrix exercises 3.9, 3.11 and 3.12; Python 3.10 is not
+currently a CI target). Standard library only outside of `textual` and `rich`.
 
 ## Not supported
 
