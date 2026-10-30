@@ -69,8 +69,10 @@ Hardening checks, limitations and assessment history: [`docs/HARDENING.md`](docs
 
 ## Screenshots
 
-Real screenshots captured from the running terminal UI. Host identity is
-anonymized. Click each image to open it at its full available size.
+Screenshots use the real terminal UI and renderers with **synthetic demo data**;
+they do not show a live host or real bans, firewall rules, or tool inventory.
+The reserved TEST-NET IP addresses are examples only. Click an image to open it
+at full size.
 
 ### Dashboard
 
@@ -82,7 +84,15 @@ anonymized. Click each image to open it at its full available size.
 
 ### Hardening assessment
 
-[![AUREON Console hardening assessment — check outcomes and evidence](assets/screenshots/assessment.jpg)](assets/screenshots/assessment.jpg)
+[![AUREON Console hardening assessment — synthetic check outcomes and evidence](assets/screenshots/assessment.jpg)](assets/screenshots/assessment.jpg)
+
+### Banned IPs
+
+[![AUREON Console Banned IPs — synthetic live and historical Fail2ban examples](assets/screenshots/banned.jpg)](assets/screenshots/banned.jpg)
+
+### Tools
+
+[![AUREON Console Tools — synthetic optional-tool inventory](assets/screenshots/tools.jpg)](assets/screenshots/tools.jpg)
 
 ## Headless use
 
