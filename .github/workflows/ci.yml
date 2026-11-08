@@ -69,6 +69,7 @@ jobs:
           python3 -m venv /tmp/aureon-ci-venv
           /tmp/aureon-ci-venv/bin/python -m pip install --upgrade pip
           /tmp/aureon-ci-venv/bin/python -m pip install -e "/tmp/aureon-ci-src[dev]"
+          chown -R aureon-ci:aureon-ci /tmp/aureon-ci-src
 
       - name: Run the complete suite, including TUI tests, unprivileged
         run: su --login --shell /bin/bash aureon-ci -c 'cd /tmp/aureon-ci-src && /tmp/aureon-ci-venv/bin/python -m pytest -q'
