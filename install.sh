@@ -3,16 +3,20 @@
 # Author: Antonio Lourenco Ferreira. License: MIT.
 set -euo pipefail
 
-PREFIX="${PREFIX:-$HOME/.local}"
-BINDIR="${BINDIR:-$PREFIX/bin}"
-VENV_DIR="${VENV_DIR:-$PREFIX/share/aureon/venv}"
 if [ "$(id -u)" = "0" ]; then
+    # sudo keeps HOME=/root, so deriving the prefix from HOME would install a
+    # "system-wide" copy under /root/.local instead of /usr/local.
+    DEFAULT_PREFIX="/usr/local"
     DEFAULT_STATE_DIR="/var/lib/aureon"
 else
     # Least privilege: a per-user install keeps its history in the user's own
     # XDG data directory instead of a root-owned system path.
+    DEFAULT_PREFIX="$HOME/.local"
     DEFAULT_STATE_DIR="$HOME/.local/share/aureon"
 fi
+PREFIX="${PREFIX:-$DEFAULT_PREFIX}"
+BINDIR="${BINDIR:-$PREFIX/bin}"
+VENV_DIR="${VENV_DIR:-$PREFIX/share/aureon/venv}"
 STATE_DIR="${AUREON_STATE_DIR:-$DEFAULT_STATE_DIR}"
 FORCE=0
 WITH_DEV=0
