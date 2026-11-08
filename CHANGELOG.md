@@ -19,8 +19,10 @@
   demo data at 1400x951.
 - Removed the internal video-analysis note that is not part of the public
   documentation.
-- CI now also installs AUREON and exercises the CLI in Debian 12, Fedora 43 and
-  AlmaLinux 9 containers, beyond the Ubuntu test matrix.
+- CI now runs the complete pytest suite, including TUI tests, as an unprivileged
+  account in Debian 12, Fedora 43 and AlmaLinux 9 containers. It also validates
+  per-user installation, repeat-install refusal, data-preserving uninstall and
+  the existing system-wide install lifecycle in those distributions.
 
 ## [0.2.0] - 2026-10-29
 
