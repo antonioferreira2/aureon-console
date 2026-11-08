@@ -35,11 +35,18 @@ Screen {
     background: #161b22;
     color: #e6edf3;
     padding: 0 1;
+    /* Keep identity, host and health readable at any width. */
+    text-align: left;
+    content-align: left top;
+}
+
+#aureon-layout {
+    height: 1fr;
 }
 
 #aureon-nav {
-    dock: left;
     width: 24;
+    height: 1fr;
     background: #10151c;
     border-right: solid #30363d;
 }

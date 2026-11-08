@@ -25,7 +25,7 @@ aureon f2b status
 | Symptom | Cause | Fix |
 |---|---|---|
 | "Fail2ban is not installed" | Package absent | Install it with your package manager (AUREON will not) |
-| "live ban list requires root" | socket permissions | Run `sudo aureon` |
+| "live ban list requires root" | Fail2ban socket permissions | Run `sudo aureon` only if you need the live list; every other module works unprivileged |
 | SSH jail reported as PROBLEM | disabled or not loaded | `aureon f2b status`, then `fail2ban-client status sshd` |
 | Jail running but zero events | wrong `logpath`/`backend` | Compare `jail.local` with `journalctl -u sshd -n 20` |
 | Statistics say "no data" | collection has not run | `aureon ingest`, then `aureon ingest --import-history` |
@@ -37,8 +37,8 @@ aureon f2b status
 | Symptom | Cause | Fix |
 |---|---|---|
 | Database not created | state dir not writable | `AUREON_STATE_DIR=$HOME/.local/share/aureon aureon db info` |
-| `permission denied` on logs | running as non-root | `sudo aureon`, or add the user to the relevant group |
-| Docker "access denied" | socket group | Add user to `docker` group or run as root (security trade-off) |
+| `permission denied` on logs | running as non-root | Prefer granting read access to a dedicated group; `sudo aureon` is the fallback |
+| Docker "access denied" | socket group | Add the user to `docker` (or rootless Podman) and review the security trade-off before running as root |
 
 ## Database
 

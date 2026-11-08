@@ -55,24 +55,33 @@ distribution and installation. See [the detailed compatibility notes](docs/COMPA
 - Runtime dependencies: `textual`, `rich` (both MIT). No database server, no web
   server, no network port.
 
-## Install
+## Quick start
+
+Linux with Python 3.9+ is the only requirement. No root, no daemon, no open
+port, no database server.
 
 ```bash
-git clone <repository-url> aureon-console
+git clone https://github.com/antonioferreira2/aureon-console.git
 cd aureon-console
-
-./install.sh                 # per-user install into ~/.local
-sudo ./install.sh            # system-wide (root-owned venv, /var/lib/aureon)
+./install.sh
 
 export PATH="$HOME/.local/bin:$PATH"
-aureon
+aureon doctor    # check Python, collectors and Fail2ban availability
+aureon           # open the console
 ```
 
-Recommended for the security module:
+`install.sh` creates a private virtualenv in `~/.local/share/aureon/venv`,
+links `~/.local/bin/aureon` and installs no system packages. A system-wide
+install is optional:
 
 ```bash
-sudo aureon
+sudo ./install.sh            # root-owned venv under /usr/local, state in /var/lib/aureon
 ```
+
+Run the console as your normal user. `sudo aureon` is only needed for the live
+Fail2ban ban list, which reads the Fail2ban socket; everything else reports
+what it can read and labels unreadable sources as unavailable instead of
+guessing.
 
 Uninstall (the history database is **kept** unless you ask for it):
 
@@ -190,7 +199,6 @@ methodology: [`docs/DATA-ACCURACY.md`](docs/DATA-ACCURACY.md).
 | [HARDENING.zh_CN.md](docs/HARDENING.zh_CN.md) | 加固评估（简体中文） |
 | [HARDENING.ru.md](docs/HARDENING.ru.md) | Оценка защищённости (русский) |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common failures and fixes |
-| [VIDEO-REFERENCE.md](docs/VIDEO-REFERENCE.md) | Analysis of the reference video (not accessible) |
 | [RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md) | What must be true before a release |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
@@ -200,7 +208,14 @@ Issues, bug reports and pull requests are welcome - read
 [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 first. Security issues: see [SECURITY.md](SECURITY.md).
 
-## Status
+## Status and support
 
-Pre-release (`0.2.0`). The repository remains **private**. No public
-release, announcement or mirror has been made.
+`0.2.0` is the current release and this repository is public. Tested and
+expected platforms are listed above and detailed in
+[COMPATIBILITY.md](docs/COMPATIBILITY.md); security reports follow
+[SECURITY.md](SECURITY.md).
+
+AUREON is a read-only visibility tool: it helps you see the state of a Linux
+server, but it is not a certification, a SIEM, an IDS or a substitute for a
+full security audit. Where evidence is missing it says so instead of assuming
+the host is safe.

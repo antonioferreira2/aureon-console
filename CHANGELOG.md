@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- The sidebar no longer overlaps the header: navigation and content now share a
+  row below the four-line header, so the product name, host and health lines are
+  readable at every width.
+- The header reports a compact module summary (`modules N/M ok`, plus the
+  modules needing attention) instead of trying to print every module label on a
+  fixed-height line.
+
+### Changed
+
+- README and installation guide now present the public quick start, install and
+  run unprivileged by default, and reserve `sudo` for the live Fail2ban list.
+- Documentation screenshots regenerated from the real Textual UI with synthetic
+  demo data at 1400x951.
+- Removed the internal video-analysis note that is not part of the public
+  documentation.
+
 ## [0.2.0] - 2026-10-29
 
 ### Added
@@ -62,6 +80,5 @@ First working version, prepared for private review.
 
 ### Notes
 
-- The reference video could not be accessed from the development environment;
-  see `docs/VIDEO-REFERENCE.md`.
-- No public release has been made.
+- The reference video could not be accessed from the development environment.
+- No public release had been made at the time of 0.1.0.

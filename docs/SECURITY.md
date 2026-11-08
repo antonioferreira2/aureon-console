@@ -70,7 +70,7 @@ CLI arguments cannot enable writes and are documented as deprecated.
 
 | Risk | Why it remains | Mitigation |
 |---|---|---|
-| Running as root | Needed for the live ban list and systemd/Docker details | Run unprivileged unless the security module is needed; AUREON reports what it cannot read |
+| Running as root | Optional elevation adds the live ban list and systemd/Docker details | The installer and the documented default are unprivileged; AUREON reports what it cannot read instead of guessing |
 | Local file tampering of the venv | Anything the user can write, the user can run | Install into a root-owned prefix; verify the install path permissions |
 | Log content can contain personal data | Inherent to `/var/log` | Redaction by default; retention limit; documented deletion |
 | Integrity of read data | AUREON trusts `/proc`, `journalctl` and the config files | A root attacker can already do anything; AUREON is not a trust anchor |

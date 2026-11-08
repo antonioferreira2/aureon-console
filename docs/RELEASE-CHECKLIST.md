@@ -36,7 +36,9 @@ Nothing is published without an explicit approval from António Lourenço Ferrei
 
 ## 5. Repository and publication
 
-- [ ] no real host data, IPs of clients, logs or credentials in history
-- [ ] `git log` reviewed before the first push
-- [ ] private repository created first
+- [ ] no real host data, client IPs, logs or credentials in the current tree or in history
+- [ ] the full history reviewed before any visibility change (history is public too)
+- [ ] screenshots are generated from the real UI with synthetic demo data only
+- [ ] secret scanning and push protection enabled on the repository
 - [ ] **explicit written approval from the author before any public release**
+- [ ] after publishing: README renders, images load, and CI is green on the published commit

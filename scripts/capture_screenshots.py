@@ -180,7 +180,7 @@ async def capture(output: Path) -> None:
         with patch("aureon.tui.app.socket.gethostname", return_value="audit-node-01.example.test"), \
              patch("aureon.tui.app.platform.system", return_value="Linux"), \
              patch("aureon.tui.app.platform.release", return_value="6.8.0-demo"):
-            async with app.run_test(size=(120, 40)) as pilot:
+            async with app.run_test(size=(140, 46)) as pilot:
                 await pilot.pause()
                 nav = app.query_one("#aureon-nav", ListView)
                 for panel in PANELS:

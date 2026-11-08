@@ -23,8 +23,12 @@ The full threat model, the implemented controls and the residual risks are in
 
 | Version | Supported |
 |---|---|
-| 0.1.x | Yes |
-| < 0.1 | No |
+| 0.2.x | Yes |
+| < 0.2 | No |
+
+AUREON is a read-only local console: it has no network service, no accounts and
+no stored credentials, so the reporting scope is the collector and parsing
+boundary described in [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ## Disclosure
 

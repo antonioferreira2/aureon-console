@@ -32,7 +32,10 @@ async def test_every_navigation_panel_renders(config):
         await pilot.pause()
         for key, _label in NAV:
             app.current = key
-            app.run_worker(app._collect_and_render(), exclusive=True)
+            # Await the worker: firing one per panel and only pausing races the
+            # collection threads and can starve the message pump on slow hosts.
+            worker = app.run_worker(app._collect_and_render(), exclusive=True)
+            await worker.wait()
             await pilot.pause()
             assert app.query_one("#aureon-body").children, f"panel {key} produced no content"
 
@@ -64,7 +67,8 @@ async def test_refresh_only_ever_issues_read_only_commands(config, monkeypatch):
         await pilot.pause()
         for panel in ("dashboard", "storage", "network", "services", "logs", "security", "banned", "firewall", "assessment", "assessment-history", "wizard", "containers", "sensors", "tools"):
             app.current = panel
-            app.run_worker(app._collect_and_render(), exclusive=True)
+            worker = app.run_worker(app._collect_and_render(), exclusive=True)
+            await worker.wait()
             await pilot.pause()
 
     forbidden = {"start", "stop", "restart", "reload", "set", "unban", "ban", "kill", "pkill", "rm", "mv", "install"}
@@ -80,7 +84,8 @@ async def test_dashboard_survives_fail2ban_absence(config):
     async with app.run_test() as pilot:
         await pilot.pause()
         app.current = "security"
-        app.run_worker(app._collect_and_render(), exclusive=True)
+        worker = app.run_worker(app._collect_and_render(), exclusive=True)
+        await worker.wait()
         await pilot.pause()
         status = app.security.status
         assert status.installed in (True, False)
@@ -90,6 +95,25 @@ async def test_dashboard_survives_fail2ban_absence(config):
 # CI (not the developer's machine) caught widgets being composed into rich
 # renderables. These tests render every panel with *degraded* data so that the
 # empty-state paths are exercised too.
+def test_header_module_summary_stays_on_one_short_line():
+    """The fixed-height header must never wrap its module status line."""
+    from aureon.i18n import navigation
+    from aureon.tui.app import module_summary
+
+    labels = navigation("en")
+    states = {key: "ok" for key, _label in labels}
+    healthy = module_summary(labels, states).plain
+    assert healthy.startswith(f"modules {len(labels)}/{len(labels)} ok")
+    assert len(healthy) < 80
+
+    states[labels[0][0]] = "error"
+    degraded = module_summary(labels, states).plain
+    assert "needs attention" in degraded
+    assert labels[0][1] in degraded
+    assert len(degraded) < 120
+    assert "collecting" in module_summary(labels, {}).plain
+
+
 def test_empty_state_returns_a_renderable_not_a_widget():
     from rich.text import Text
 

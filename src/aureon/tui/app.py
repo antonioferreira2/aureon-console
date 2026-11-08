@@ -75,29 +75,32 @@ class Header3(Static):
             health.append("   ")
         if not self.indicators:
             health.append("collecting...", style="#6e7681")
-        modules = Text()
-        for key, label in navigation(self.config.language):
-            state = self.module_states.get(key, "")
-            symbol = {
-                "ok": "\u25cf",
-                "warn": "\u25b2",
-                "error": "\u2716",
-                "unavailable": "\u2013",
-                "denied": "\u25b2",
-                "timeout": "\u25b2",
-                "error:": "\u2716",
-            }.get(state, "\u25cb")
-            style = {
-                "ok": "#4ec9a8",
-                "warn": "#e5c07b",
-                "error": "#e06c75",
-                "unavailable": "#6e7681",
-                "denied": "#e5c07b",
-                "timeout": "#e5c07b",
-            }.get(state, "#6e7681")
-            modules.append(f"{symbol} ", style=style)
-            modules.append(f"{label} ")
-        return Group(title, host, health, modules)
+        return Group(title, host, health, module_summary(
+            navigation(self.config.language), self.module_states
+        ))
+
+
+def module_summary(labels, states: Dict[str, str]) -> Text:
+    """One compact line: how many modules are healthy, and which need attention.
+
+    The header has a fixed four-line height, so it must not try to print every
+    module label: a long list used to wrap and push the host and health lines
+    out of view in narrow terminals and in documentation screenshots.
+    """
+    text = Text()
+    reported = [(key, label) for key, label in labels if key in states]
+    if not reported:
+        text.append("collecting module state...", style="#6e7681")
+        return text
+    healthy = sum(1 for key, _label in reported if states.get(key) == "ok")
+    text.append(f"modules {healthy}/{len(reported)} ok", style="#4ec9a8" if healthy == len(reported) else "#6e7681")
+    attention = [label for key, label in reported if states.get(key) != "ok"]
+    if attention:
+        shown = attention[:4]
+        suffix = "\u2026" if len(attention) > len(shown) else ""
+        text.append("   needs attention: ", style="#e5c07b")
+        text.append(", ".join(shown) + suffix, style="#e5c07b")
+    return text
 
 
 def indicators_line(items: List[Indicator]):
@@ -148,11 +151,14 @@ class AureonApp(App):
     def compose(self) -> ComposeResult:
         self.header = Header3(self.config, id="aureon-header")
         yield self.header
-        nav_items = [ListItem(Label(label), id=f"nav-{key}") for key, label in navigation(self.config.language)]
-        yield ListView(*nav_items, id="aureon-nav")
-        with Vertical(id="aureon-main"):
-            yield Static("", id="aureon-title")
-            yield VerticalScroll(Static("", id="aureon-content"), id="aureon-body")
+        # Header, navigation and content are siblings in flow order: docking the
+        # sidebar across the whole screen used to paint over the header text.
+        with Horizontal(id="aureon-layout"):
+            nav_items = [ListItem(Label(label), id=f"nav-{key}") for key, label in navigation(self.config.language)]
+            yield ListView(*nav_items, id="aureon-nav")
+            with Vertical(id="aureon-main"):
+                yield Static("", id="aureon-title")
+                yield VerticalScroll(Static("", id="aureon-content"), id="aureon-body")
         yield Static("starting...", id="aureon-status")
         yield Footer()
 
@@ -188,8 +194,6 @@ class AureonApp(App):
 
             result = SystemCollector(self.ctx).collect()
             states["system"] = result.availability
-            if result.available:
-                self.header.set_data(system_indicators(result.value), {**states, "dashboard": result.availability})
         except Exception:  # noqa: BLE001
             states["system"] = "error"
         for key in ("storage", "network", "services", "docker", "sensors"):

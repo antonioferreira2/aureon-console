@@ -28,6 +28,8 @@ sudo ./install.sh               # system-wide: /usr/local/share/aureon/venv, /va
 
 Properties:
 
+- **No root required.** The per-user install is the default and keeps the
+  virtualenv, config and history under your own home directory.
 - **Idempotent.** Re-running without `--force` refuses and tells you what to do.
 - **No silent overwrite.** `--force` moves the previous installation aside
   instead of deleting it.
@@ -53,11 +55,13 @@ sudo ln -s /usr/local/share/aureon/venv/bin/aureon /usr/local/bin/aureon
 ## 5. Running
 
 ```bash
-aureon            # interactive console
-sudo aureon       # needed for: live Fail2ban bans, some systemd details, Docker socket
+aureon            # interactive console, unprivileged
+sudo aureon       # optional: live Fail2ban ban list, systemd/Docker details, root-only logs
 ```
 
-Root is **recommended for the security module**, not required to start.
+Run unprivileged by default (least privilege). Elevation only adds the live
+Fail2ban ban list and restricted host details; every module still reports what
+it can and cannot read, and never guesses a value it was denied.
 
 Over SSH:
 
@@ -72,12 +76,13 @@ truncated rather than broken. See
 ## 6. Updating
 
 ```bash
-sudo ./install.sh --force
+./install.sh --force            # per-user install
+sudo ./install.sh --force       # system-wide install
 ```
 
-The venv is replaced; the state directory (`/var/lib/aureon` or
-`~/.local/share/aureon`) is untouched, and the schema migrates automatically on
-the next run.
+The venv is replaced; the state directory (`/var/lib/aureon` for a system-wide
+install or `~/.local/share/aureon` otherwise) is untouched, and the schema
+migrates automatically on the next run.
 
 Recommended before an update on a live server:
 

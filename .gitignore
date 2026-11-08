@@ -22,3 +22,6 @@ docs/screenshots/
 
 # Development virtualenv
 .devvenv/
+
+# Local screenshot build output (SVG/PNG intermediates)
+.screenshot-build/

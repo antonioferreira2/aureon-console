@@ -6,7 +6,14 @@ set -euo pipefail
 PREFIX="${PREFIX:-$HOME/.local}"
 BINDIR="${BINDIR:-$PREFIX/bin}"
 VENV_DIR="${VENV_DIR:-$PREFIX/share/aureon/venv}"
-STATE_DIR="${AUREON_STATE_DIR:-/var/lib/aureon}"
+if [ "$(id -u)" = "0" ]; then
+    DEFAULT_STATE_DIR="/var/lib/aureon"
+else
+    # Least privilege: a per-user install keeps its history in the user's own
+    # XDG data directory instead of a root-owned system path.
+    DEFAULT_STATE_DIR="$HOME/.local/share/aureon"
+fi
+STATE_DIR="${AUREON_STATE_DIR:-$DEFAULT_STATE_DIR}"
 FORCE=0
 WITH_DEV=0
 
@@ -127,8 +134,8 @@ cat <<EOF
 Installation complete.
 
     export PATH="$BINDIR:\$PATH"
-    aureon                 # open the console
-    sudo aureon            # recommended: needed for the live Fail2ban ban list
+    aureon                 # open the console as your normal user
+    sudo aureon            # optional: live Fail2ban ban list only
 
 Documentation: docs/INSTALLATION.md
 EOF
