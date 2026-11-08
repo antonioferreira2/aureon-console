@@ -34,19 +34,19 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-  distro-install:
-    name: install (${{ matrix.distro }})
+  distro-validation:
+    name: validate (${{ matrix.distro }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - distro: debian:12
-            prepare: apt-get update && apt-get install -y --no-install-recommends git python3 python3-venv python3-pip ca-certificates
+            prepare: apt-get update && apt-get install -y --no-install-recommends git python3 python3-venv python3-pip ca-certificates passwd util-linux
           - distro: fedora:43
-            prepare: dnf install -y git python3 python3-pip
+            prepare: dnf install -y git python3 python3-pip shadow-utils util-linux
           - distro: almalinux:9
-            prepare: dnf install -y git python3 python3-pip
+            prepare: dnf install -y git python3 python3-pip shadow-utils util-linux
     container: ${{ matrix.distro }}
     steps:
       # git must exist before actions/checkout runs inside the container.
@@ -54,6 +54,36 @@ jobs:
         run: ${{ matrix.prepare }}
 
       - uses: actions/checkout@v4
+
+      - name: Create an unprivileged test account
+        run: useradd --create-home --shell /bin/bash aureon-ci
+
+      - name: Prepare an unprivileged source checkout
+        run: |
+          mkdir -p /tmp/aureon-ci-src
+          cp -a "$GITHUB_WORKSPACE"/. /tmp/aureon-ci-src/
+          chown -R aureon-ci:aureon-ci /tmp/aureon-ci-src
+
+      - name: Install test dependencies
+        run: |
+          python3 -m venv /tmp/aureon-ci-venv
+          /tmp/aureon-ci-venv/bin/python -m pip install --upgrade pip
+          /tmp/aureon-ci-venv/bin/python -m pip install -e "/tmp/aureon-ci-src[dev]"
+
+      - name: Run the complete suite, including TUI tests, unprivileged
+        run: su --login --shell /bin/bash aureon-ci -c 'cd /tmp/aureon-ci-src && /tmp/aureon-ci-venv/bin/python -m pytest -q'
+
+      - name: Verify per-user install, repeat protection and data-preserving uninstall
+        run: |
+          su --login --shell /bin/bash aureon-ci -c 'cd /tmp/aureon-ci-src && ./install.sh'
+          su --login --shell /bin/bash aureon-ci -c '"$HOME/.local/bin/aureon" --version && "$HOME/.local/bin/aureon" modules --json > /dev/null'
+          if su --login --shell /bin/bash aureon-ci -c 'cd /tmp/aureon-ci-src && ./install.sh'; then
+            echo "per-user installer was not idempotent"; exit 1
+          fi
+          su --login --shell /bin/bash aureon-ci -c '"$HOME/.local/bin/aureon" ingest'
+          su --login --shell /bin/bash aureon-ci -c 'test -e "$HOME/.local/share/aureon/aureon.db"'
+          su --login --shell /bin/bash aureon-ci -c 'cd /tmp/aureon-ci-src && ./install.sh --uninstall'
+          su --login --shell /bin/bash aureon-ci -c 'test ! -e "$HOME/.local/share/aureon/venv" && test -e "$HOME/.local/share/aureon/aureon.db"'
 
       - name: Install AUREON system-wide
         run: ./install.sh
