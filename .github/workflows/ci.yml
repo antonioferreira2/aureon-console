@@ -34,6 +34,48 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+  distro-install:
+    name: install (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian:12
+            prepare: apt-get update && apt-get install -y --no-install-recommends git python3 python3-venv python3-pip ca-certificates
+          - distro: fedora:43
+            prepare: dnf install -y git python3 python3-pip
+          - distro: almalinux:9
+            prepare: dnf install -y git python3 python3-pip
+    container: ${{ matrix.distro }}
+    steps:
+      # git must exist before actions/checkout runs inside the container.
+      - name: Install system prerequisites
+        run: ${{ matrix.prepare }}
+
+      - uses: actions/checkout@v4
+
+      - name: Install AUREON system-wide
+        run: ./install.sh
+
+      - name: Installed binary works
+        run: |
+          /usr/local/bin/aureon --version
+          /usr/local/bin/aureon modules --json > /dev/null
+
+      - name: Second install must refuse
+        run: |
+          if ./install.sh; then
+            echo "installer was not idempotent"; exit 1
+          fi
+
+      - name: Uninstall removes the app but keeps history
+        run: |
+          test -e /var/lib/aureon
+          ./install.sh --uninstall
+          test ! -e /usr/local/share/aureon/venv
+          test -d /var/lib/aureon
+
   headless-smoke:
     name: headless smoke test
     runs-on: ubuntu-latest

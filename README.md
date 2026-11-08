@@ -39,7 +39,8 @@ supported Linux server and run AUREON there.
 | Operating system / distribution | Compatibility |
 |---|---|
 | Ubuntu 22.04 LTS and 24.04 LTS | CI test targets (Python 3.9, 3.11 and 3.12) |
-| Debian, RHEL-compatible (RHEL/Rocky/AlmaLinux), Fedora, Arch, openSUSE and Alpine Linux | Expected to work with Python 3.9+ and readable `/proc` and `/sys`; these distributions are not individually covered by the CI matrix |
+| Debian 12, Fedora 43 and AlmaLinux 9 | Installer and CLI smoke-tested in containers by CI on every commit |
+| RHEL/Rocky, Arch, openSUSE and Alpine Linux | Expected to work with Python 3.9+ and readable `/proc` and `/sys`; not covered by CI |
 | Windows, macOS, FreeBSD and other non-Linux systems | Not supported for running the application |
 | Linux containers | Partial support only when required host interfaces and files are visible; unavailable collectors are reported rather than inferred |
 

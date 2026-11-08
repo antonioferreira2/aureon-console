@@ -7,6 +7,7 @@ Author: António Lourenço Ferreira
 | Environment | Evidence and limits |
 |---|---|
 | Ubuntu 22.04 LTS and 24.04 LTS, Python 3.9, 3.11 and 3.12 | Automated test matrix in GitHub Actions; check the current workflow run for the exact commit |
+| Debian 12, Fedora 43 and AlmaLinux 9 | Container jobs install AUREON system-wide, run the CLI and check uninstall behaviour on every commit |
 | Other Linux distributions with Python 3.9+ | Expected to work based on Linux `/proc` and `/sys` interfaces and available-command detection; not individually covered by CI |
 | Windows, macOS and BSD as the audited host | Not supported; required Linux kernel interfaces and collectors are absent |
 
